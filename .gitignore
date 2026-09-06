@@ -1,0 +1,32 @@
+# Binarios y compilados
+/backend/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Variables de entorno
+.env
+.env.local
+
+# Frontend y Node.js
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# IDEs y SO
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docker Data local
+postgres_data/
+redis_data/
+minio_data/

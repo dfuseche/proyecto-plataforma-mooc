@@ -1,0 +1,424 @@
+{
+	"info": {
+		"_postman_id": "mooc-platform-api-collection-v3",
+		"name": "Plataforma MOOC - Colección Completa de Pruebas API REST",
+		"description": "Colección oficial de Postman para probar todos los servicios backend de la Plataforma MOOC (Autenticación Admin/Profesor/Estudiante, Autoría de Cursos, Carga S3, Quizzes, Progreso e Insignias).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "adminToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "adminId",
+			"value": "00000000-0000-0000-0000-000000000001",
+			"type": "string"
+		},
+		{
+			"key": "teacherToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "teacherId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "studentToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "studentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "verificationCode",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "courseId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "versionId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "01 - Autenticación y Gestión de Usuarios",
+			"item": [
+				{
+					"name": "Healthcheck",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.1 - Login Administrador Principal",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('adminToken', jsonData.data.session.token);",
+									"    pm.collectionVariables.set('adminId', jsonData.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@mooc.com\",\n  \"password\": \"Admin123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "login"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.2 - Crear Profesor (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('teacherId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Admin-ID",
+								"value": "{{adminId}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"profesor.postman@mooc.com\",\n  \"password\": \"ProfesorPass123!\",\n  \"full_name\": \"Profesor Creado por Admin\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/teachers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "admin", "teachers"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.3 - Login Profesor",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('teacherToken', jsonData.data.session.token);",
+									"    pm.collectionVariables.set('teacherId', jsonData.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"profesor.postman@mooc.com\",\n  \"password\": \"ProfesorPass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "login"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.4 - Registro de Estudiante",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('verificationCode', jsonData.data.verification_code);",
+									"    pm.collectionVariables.set('studentId', jsonData.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"estudiante.postman@mooc.com\",\n  \"password\": \"Password123!\",\n  \"full_name\": \"Estudiante Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "register"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.5 - Verificación de Correo (Estudiante)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{verificationCode}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/verify-email",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "verify-email"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.6 - Login Estudiante",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('studentToken', jsonData.data.session.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"estudiante.postman@mooc.com\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "login"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "02 - Autoría de Cursos y Jerarquía",
+			"item": [
+				{
+					"name": "Listar Catálogo de Cursos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Borrador de Curso (Profesor)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('courseId', jsonData.data.course.id);",
+									"    pm.collectionVariables.set('versionId', jsonData.data.version.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Teacher-ID",
+								"value": "{{teacherId}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Curso de Go y Cloud Architecture\",\n  \"summary\": \"Aprende Go, Docker, Redis y MinIO S3\",\n  \"passing_score\": 80.0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "03 - Almacenamiento S3 y Carga Directa",
+			"item": [
+				{
+					"name": "Generar URL Prefirmada Carga S3",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"object_key\": \"cursos/video-introduccion.mp4\",\n  \"content_type\": \"video/mp4\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/media/presigned-upload",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "media", "presigned-upload"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "04 - Quizzes, Progreso e Insignias",
+			"item": [
+				{
+					"name": "Inscribir Estudiante a Curso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"student_id\": \"{{studentId}}\",\n  \"course_id\": \"{{courseId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/learning/enrollments",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "learning", "enrollments"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Registrar Heartbeat de Progreso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"student_id\": \"{{studentId}}\",\n  \"course_id\": \"{{courseId}}\",\n  \"resource_stable_id\": \"00000000-0000-0000-0000-000000000101\",\n  \"dwell_time_seconds\": 15,\n  \"last_position_seconds\": 120\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/learning/heartbeat",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "learning", "heartbeat"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

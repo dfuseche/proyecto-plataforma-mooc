@@ -1,0 +1,103 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prod-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mooc_db}
+      POSTGRES_USER: ${POSTGRES_USER:-mooc_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mooc_secure_password}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mooc_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: prod-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Instancia 1 de la API Go
+  api-1:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: prod-api-1
+    restart: always
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://${POSTGRES_USER:-mooc_user}:${POSTGRES_PASSWORD:-mooc_secure_password}@postgres:5432/${POSTGRES_DB:-mooc_db}?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      JWT_SECRET: ${JWT_SECRET:-prod-secret-key-change-me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Instancia 2 de la API Go (Escalamiento Horizontal)
+  api-2:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: prod-api-2
+    restart: always
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://${POSTGRES_USER:-mooc_user}:${POSTGRES_PASSWORD:-mooc_secure_password}@postgres:5432/${POSTGRES_DB:-mooc_db}?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      JWT_SECRET: ${JWT_SECRET:-prod-secret-key-change-me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Worker Instancia 1
+  worker-1:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: prod-worker-1
+    command: ["/app/worker"]
+    restart: always
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER:-mooc_user}:${POSTGRES_PASSWORD:-mooc_secure_password}@postgres:5432/${POSTGRES_DB:-mooc_db}?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Worker Instancia 2
+  worker-2:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: prod-worker-2
+    command: ["/app/worker"]
+    restart: always
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER:-mooc_user}:${POSTGRES_PASSWORD:-mooc_secure_password}@postgres:5432/${POSTGRES_DB:-mooc_db}?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:

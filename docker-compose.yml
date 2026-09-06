@@ -1,0 +1,118 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mooc-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: mooc_db
+      POSTGRES_USER: mooc_user
+      POSTGRES_PASSWORD: mooc_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mooc_user -d mooc_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mooc-redis
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: mooc-minio
+    restart: always
+    entrypoint: sh
+    command: -c 'mkdir -p /data/mooc-media /data/mooc-badges && /usr/bin/minio server /data --console-address ":9001"'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    ports:
+      - "9002:9000" # API S3
+      - "9003:9001" # Consola Web MinIO
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mooc-mailpit
+    restart: always
+    ports:
+      - "1026:1025" # SMTP server
+      - "8026:8025" # Web UI Mailpit
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mooc-api
+    restart: always
+    ports:
+      - "8081:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://mooc_user:mooc_password@postgres:5432/mooc_db?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadminpassword"
+      MINIO_SECURE: "false"
+      MAILPIT_HOST: "mailpit"
+      MAILPIT_PORT: "1025"
+      JWT_SECRET: "super-secret-key-change-in-production"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mooc-worker
+    command: ["/app/worker"]
+    restart: always
+    environment:
+      DATABASE_URL: "postgres://mooc_user:mooc_password@postgres:5432/mooc_db?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadminpassword"
+      MINIO_SECURE: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

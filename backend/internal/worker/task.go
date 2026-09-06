@@ -1,0 +1,38 @@
+package worker
+
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+)
+
+const (
+	TypeMediaTranscodeHLS = "media:transcode_hls"
+	TypeAntimalwareScan   = "media:antimalware_scan"
+)
+
+type MediaTranscodeHLSPayload struct {
+	ResourceID  uuid.UUID `json:"resource_id"`
+	OriginalKey string    `json:"original_key"`
+	MediaType   string    `json:"media_type"` // video, audio
+}
+
+func NewMediaTranscodeHLSTask(resourceID uuid.UUID, originalKey string, mediaType string) (*asynq.Task, error) {
+	payload, err := json.Marshal(MediaTranscodeHLSPayload{
+		ResourceID:  resourceID,
+		OriginalKey: originalKey,
+		MediaType:   mediaType,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Idempotencia utilizando el ID del recurso como Task ID único
+	return asynq.NewTask(
+		TypeMediaTranscodeHLS,
+		payload,
+		asynq.TaskID(resourceID.String()),
+		asynq.MaxRetry(3), // Máximo 3 reintentos antes de enviar a DLQ (Sección 6)
+	), nil
+}

@@ -1,0 +1,125 @@
+package domain
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type VersionStatus string
+type ResourceType string
+type ProcessingStatus string
+
+const (
+	VersionStatusDraft     VersionStatus = "draft"
+	VersionStatusPublished VersionStatus = "published"
+	VersionStatusArchived  VersionStatus = "archived"
+)
+
+const (
+	ResourceTypeText         ResourceType = "text"
+	ResourceTypeImage        ResourceType = "image"
+	ResourceTypeVideo        ResourceType = "video"
+	ResourceTypeAudio        ResourceType = "audio"
+	ResourceTypePDF          ResourceType = "pdf"
+	ResourceTypePresentation ResourceType = "presentation"
+	ResourceTypeDownload     ResourceType = "download"
+	ResourceTypeIframe       ResourceType = "iframe"
+	ResourceTypeLink         ResourceType = "link"
+	ResourceTypeQuiz         ResourceType = "quiz"
+)
+
+const (
+	ProcessingPending    ProcessingStatus = "pending"
+	ProcessingInProgress ProcessingStatus = "processing"
+	ProcessingCompleted  ProcessingStatus = "completed"
+	ProcessingFailed     ProcessingStatus = "failed"
+)
+
+var (
+	ErrCourseNotFound             = errors.New("curso no encontrado")
+	ErrVersionNotFound            = errors.New("versión de curso no encontrada")
+	ErrVersionImmutable           = errors.New("una versión publicada es inmutable; debe crear un borrador de actualización")
+	ErrInvalidPublishStructure    = errors.New("un curso solo se publica con metadatos completos, criterios de aprobación y la jerarquía mínima (Módulo -> Unidad -> Recurso visible y disponible)")
+	ErrUnauthorizedCourseMutation = errors.New("no tiene permisos para editar este curso")
+)
+
+type Course struct {
+	ID                        uuid.UUID  `json:"id"`
+	Slug                      string     `json:"slug"`
+	Title                     string     `json:"title"`
+	Summary                   string     `json:"summary"`
+	CreatedByTeacherID        uuid.UUID  `json:"created_by_teacher_id"`
+	CurrentPublishedVersionID *uuid.UUID `json:"current_published_version_id,omitempty"`
+	CreatedAt                 time.Time  `json:"created_at"`
+	UpdatedAt                 time.Time  `json:"updated_at"`
+}
+
+type CourseVersion struct {
+	ID            uuid.UUID `json:"id"`
+	CourseID      uuid.UUID `json:"course_id"`
+	VersionNumber int       `json:"version_number"`
+	Status        VersionStatus `json:"status"`
+	PassingScore  float64   `json:"passing_score"`
+	CreatedAt     time.Time `json:"created_at"`
+	PublishedAt   *time.Time `json:"published_at,omitempty"`
+	Modules       []Module  `json:"modules,omitempty"`
+}
+
+type Module struct {
+	ID          uuid.UUID `json:"id"`
+	VersionID   uuid.UUID `json:"version_id"`
+	StableID    uuid.UUID `json:"stable_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Position    int       `json:"position"`
+	CreatedAt   time.Time `json:"created_at"`
+	Units       []Unit    `json:"units,omitempty"`
+}
+
+type Unit struct {
+	ID        uuid.UUID  `json:"id"`
+	ModuleID  uuid.UUID  `json:"module_id"`
+	StableID  uuid.UUID  `json:"stable_id"`
+	Title     string     `json:"title"`
+	Position  int        `json:"position"`
+	CreatedAt time.Time  `json:"created_at"`
+	Resources []Resource `json:"resources,omitempty"`
+}
+
+type Resource struct {
+	ID                uuid.UUID        `json:"id"`
+	UnitID            uuid.UUID        `json:"unit_id"`
+	StableID          uuid.UUID        `json:"stable_id"`
+	Title             string           `json:"title"`
+	Type              ResourceType     `json:"type"`
+	CanonicalMarkdown string           `json:"canonical_markdown,omitempty"`
+	MediaURL          string           `json:"media_url,omitempty"`
+	IsVisible         bool             `json:"is_visible"`
+	IsMandatory       bool             `json:"is_mandatory"`
+	IsDownloadable    bool             `json:"is_downloadable"`
+	Position          int              `json:"position"`
+	ProcessingStatus  ProcessingStatus `json:"processing_status"`
+	CreatedAt         time.Time        `json:"created_at"`
+	UpdatedAt         time.Time        `json:"updated_at"`
+}
+
+type CourseRepository interface {
+	CreateCourse(ctx context.Context, course *Course, initialVersion *CourseVersion) error
+	GetCourseByID(ctx context.Context, id uuid.UUID) (*Course, error)
+	GetCourseBySlug(ctx context.Context, slug string) (*Course, error)
+	ListCourses(ctx context.Context, limit, offset int) ([]*Course, error)
+	UpdateCourse(ctx context.Context, course *Course) error
+
+	CreateVersion(ctx context.Context, version *CourseVersion) error
+	GetVersionByID(ctx context.Context, versionID uuid.UUID) (*CourseVersion, error)
+	GetFullVersionHierarchy(ctx context.Context, versionID uuid.UUID) (*CourseVersion, error)
+	PublishVersion(ctx context.Context, courseID uuid.UUID, versionID uuid.UUID) error
+
+	CreateModule(ctx context.Context, module *Module) error
+	CreateUnit(ctx context.Context, unit *Unit) error
+	CreateResource(ctx context.Context, resource *Resource) error
+	UpdateResource(ctx context.Context, resource *Resource) error
+}

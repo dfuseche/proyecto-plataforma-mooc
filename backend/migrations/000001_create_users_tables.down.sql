@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS user_tokens;
+DROP TABLE IF EXISTS user_sessions;
+DROP TABLE IF EXISTS users;
