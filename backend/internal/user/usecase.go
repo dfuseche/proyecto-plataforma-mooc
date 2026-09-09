@@ -83,7 +83,6 @@ func (uc *UseCase) RegisterStudent(ctx context.Context, input RegisterStudentInp
 		return nil, "", err
 	}
 
-	// Token de verificación de email
 	tokenBytes := make([]byte, 32)
 	rand.Read(tokenBytes)
 	tokenStr := hex.EncodeToString(tokenBytes)
@@ -208,6 +207,94 @@ func (uc *UseCase) Login(ctx context.Context, input LoginInput) (*LoginOutput, e
 	}, nil
 }
 
+func (uc *UseCase) Logout(ctx context.Context, sessionToken string) error {
+	session, err := uc.repo.GetSessionByToken(ctx, sessionToken)
+	if err != nil {
+		return nil
+	}
+	if err := uc.repo.RevokeSession(ctx, session.ID); err != nil {
+		return err
+	}
+	_ = uc.repo.CreateAuditLog(ctx, &domain.AuditLog{
+		ActorID:        &session.UserID,
+		Action:         "USER_LOGGED_OUT",
+		TargetResource: "user_sessions",
+		TargetID:       &session.ID,
+	})
+	return nil
+}
+
+func (uc *UseCase) ForgotPassword(ctx context.Context, email string) (string, error) {
+	user, err := uc.repo.GetByEmail(ctx, email)
+	if err != nil {
+		// Retornar genérico sin revelar existencia de correo por seguridad
+		return "", nil
+	}
+
+	tokenBytes := make([]byte, 32)
+	rand.Read(tokenBytes)
+	tokenStr := hex.EncodeToString(tokenBytes)
+
+	resetToken := &domain.UserToken{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		Token:     tokenStr,
+		Type:      "password_reset",
+		Used:      false,
+		ExpiresAt: time.Now().Add(2 * time.Hour),
+	}
+
+	if err := uc.repo.CreateToken(ctx, resetToken); err != nil {
+		return "", err
+	}
+
+	_ = uc.repo.CreateAuditLog(ctx, &domain.AuditLog{
+		ActorID:        &user.ID,
+		Action:         "PASSWORD_RESET_REQUESTED",
+		TargetResource: "users",
+		TargetID:       &user.ID,
+	})
+
+	return tokenStr, nil
+}
+
+func (uc *UseCase) ResetPassword(ctx context.Context, tokenStr string, newPassword string) error {
+	token, err := uc.repo.GetToken(ctx, tokenStr, "password_reset")
+	if err != nil {
+		return domain.ErrInvalidToken
+	}
+	if token.Used || time.Now().After(token.ExpiresAt) {
+		return domain.ErrInvalidToken
+	}
+
+	user, err := uc.repo.GetByID(ctx, token.UserID)
+	if err != nil {
+		return err
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user.PasswordHash = string(hash)
+	if err := uc.repo.UpdateUser(ctx, user); err != nil {
+		return err
+	}
+
+	_ = uc.repo.MarkTokenUsed(ctx, token.ID)
+	_ = uc.repo.RevokeAllUserSessions(ctx, user.ID)
+
+	_ = uc.repo.CreateAuditLog(ctx, &domain.AuditLog{
+		ActorID:        &user.ID,
+		Action:         "PASSWORD_RESET_COMPLETED",
+		TargetResource: "users",
+		TargetID:       &user.ID,
+	})
+
+	return nil
+}
+
 type CreateTeacherInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -272,7 +359,6 @@ func (uc *UseCase) ChangeUserStatus(ctx context.Context, adminID uuid.UUID, targ
 		return err
 	}
 
-	// Regla de Protección al Último Administrador Activo
 	if target.Role == domain.RoleAdmin && (newStatus == domain.StatusSuspended || newStatus == domain.StatusUnverified) {
 		activeAdmins, err := uc.repo.CountActiveAdmins(ctx)
 		if err != nil {
@@ -288,7 +374,6 @@ func (uc *UseCase) ChangeUserStatus(ctx context.Context, adminID uuid.UUID, targ
 		return err
 	}
 
-	// Revocar todas las sesiones de inmediato al suspender
 	if newStatus == domain.StatusSuspended {
 		_ = uc.repo.RevokeAllUserSessions(ctx, target.ID)
 	}
@@ -302,4 +387,12 @@ func (uc *UseCase) ChangeUserStatus(ctx context.Context, adminID uuid.UUID, targ
 	})
 
 	return nil
+}
+
+func (uc *UseCase) ListUsers(ctx context.Context, role *domain.Role, status *domain.UserStatus, search string, limit, offset int) ([]*domain.User, int, error) {
+	return uc.repo.ListUsers(ctx, role, status, search, limit, offset)
+}
+
+func (uc *UseCase) ListAuditLogs(ctx context.Context, limit, offset int) ([]*domain.AuditLog, int, error) {
+	return uc.repo.ListAuditLogs(ctx, limit, offset)
 }

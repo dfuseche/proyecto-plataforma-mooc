@@ -41,6 +41,7 @@ const (
 var (
 	ErrCourseNotFound             = errors.New("curso no encontrado")
 	ErrVersionNotFound            = errors.New("versión de curso no encontrada")
+	ErrResourceNotFound           = errors.New("recurso no encontrado")
 	ErrVersionImmutable           = errors.New("una versión publicada es inmutable; debe crear un borrador de actualización")
 	ErrInvalidPublishStructure    = errors.New("un curso solo se publica con metadatos completos, criterios de aprobación y la jerarquía mínima (Módulo -> Unidad -> Recurso visible y disponible)")
 	ErrUnauthorizedCourseMutation = errors.New("no tiene permisos para editar este curso")
@@ -115,11 +116,19 @@ type CourseRepository interface {
 
 	CreateVersion(ctx context.Context, version *CourseVersion) error
 	GetVersionByID(ctx context.Context, versionID uuid.UUID) (*CourseVersion, error)
+	GetLatestDraftVersion(ctx context.Context, courseID uuid.UUID) (*CourseVersion, error)
 	GetFullVersionHierarchy(ctx context.Context, versionID uuid.UUID) (*CourseVersion, error)
 	PublishVersion(ctx context.Context, courseID uuid.UUID, versionID uuid.UUID) error
+	UnpublishCourse(ctx context.Context, courseID uuid.UUID) error
 
 	CreateModule(ctx context.Context, module *Module) error
 	CreateUnit(ctx context.Context, unit *Unit) error
 	CreateResource(ctx context.Context, resource *Resource) error
+	GetResourceByID(ctx context.Context, resourceID uuid.UUID) (*Resource, error)
 	UpdateResource(ctx context.Context, resource *Resource) error
+	DeleteResource(ctx context.Context, resourceID uuid.UUID) error
+
+	ReorderModules(ctx context.Context, versionID uuid.UUID, orderedIDs []uuid.UUID) error
+	ReorderUnits(ctx context.Context, moduleID uuid.UUID, orderedIDs []uuid.UUID) error
+	ReorderResources(ctx context.Context, unitID uuid.UUID, orderedIDs []uuid.UUID) error
 }

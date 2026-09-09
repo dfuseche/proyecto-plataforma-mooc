@@ -12,7 +12,7 @@ import (
 )
 
 type StorageService struct {
-	client     *minio.Client
+	client      *minio.Client
 	mediaBucket string
 	badgeBucket string
 }
@@ -41,7 +41,6 @@ type PresignedUploadOutput struct {
 }
 
 func (s *StorageService) GeneratePresignedUploadURL(ctx context.Context, objectKey string, contentType string) (*PresignedUploadOutput, error) {
-	// Reanudable durante 24 horas según especificación (Sección 5.1 - ítem 5)
 	expiry := 24 * time.Hour
 
 	reqParams := make(url.Values)
@@ -72,6 +71,10 @@ func (s *StorageService) GeneratePresignedDownloadURL(ctx context.Context, objec
 	}
 
 	return presignedURL.String(), nil
+}
+
+func (s *StorageService) StatObject(ctx context.Context, objectKey string) (minio.ObjectInfo, error) {
+	return s.client.StatObject(ctx, s.mediaBucket, objectKey, minio.StatObjectOptions{})
 }
 
 func (s *StorageService) GetClient() *minio.Client {

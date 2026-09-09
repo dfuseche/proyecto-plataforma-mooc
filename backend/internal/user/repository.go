@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -204,4 +205,109 @@ func (r *PostgresRepository) CreateAuditLog(ctx context.Context, al *domain.Audi
 		al.ID, al.ActorID, al.Action, al.TargetResource, al.TargetID, payloadBytes, al.IPAddress, al.UserAgent, al.CreatedAt,
 	)
 	return err
+}
+
+func (r *PostgresRepository) ListUsers(ctx context.Context, role *domain.Role, status *domain.UserStatus, search string, limit, offset int) ([]*domain.User, int, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	whereClause := "WHERE 1=1"
+	args := []any{}
+	argIdx := 1
+
+	if role != nil && *role != "" {
+		whereClause += fmt.Sprintf(" AND role = $%d", argIdx)
+		args = append(args, string(*role))
+		argIdx++
+	}
+	if status != nil && *status != "" {
+		whereClause += fmt.Sprintf(" AND status = $%d", argIdx)
+		args = append(args, string(*status))
+		argIdx++
+	}
+	if search != "" {
+		whereClause += fmt.Sprintf(" AND (LOWER(email) LIKE $%d OR LOWER(full_name) LIKE $%d)", argIdx, argIdx)
+		args = append(args, "%"+strings.ToLower(search)+"%")
+		argIdx++
+	}
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM users %s", whereClause)
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, email, password_hash, full_name, role, status, email_verified_at, created_at, updated_at
+		FROM users %s
+		ORDER BY created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereClause, argIdx, argIdx+1)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+	for rows.Next() {
+		var u domain.User
+		var roleStr, statusStr string
+		if err := rows.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &roleStr, &statusStr, &u.EmailVerifiedAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		u.Role = domain.Role(roleStr)
+		u.Status = domain.UserStatus(statusStr)
+		users = append(users, &u)
+	}
+
+	return users, total, nil
+}
+
+func (r *PostgresRepository) ListAuditLogs(ctx context.Context, limit, offset int) ([]*domain.AuditLog, int, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var total int
+	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM audit_logs").Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count audit logs: %w", err)
+	}
+
+	query := `
+		SELECT id, actor_id, action, target_resource, target_id, payload, ip_address, user_agent, created_at
+		FROM audit_logs
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query audit logs: %w", err)
+	}
+	defer rows.Close()
+
+	var logs []*domain.AuditLog
+	for rows.Next() {
+		var al domain.AuditLog
+		var payloadBytes []byte
+		if err := rows.Scan(&al.ID, &al.ActorID, &al.Action, &al.TargetResource, &al.TargetID, &payloadBytes, &al.IPAddress, &al.UserAgent, &al.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		if len(payloadBytes) > 0 {
+			_ = json.Unmarshal(payloadBytes, &al.Payload)
+		}
+		logs = append(logs, &al)
+	}
+
+	return logs, total, nil
 }

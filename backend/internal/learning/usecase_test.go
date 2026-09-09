@@ -138,6 +138,24 @@ func (m *mockLearningRepo) GetStudentBadgeForCourse(ctx context.Context, student
 	return b, nil
 }
 
+func (m *mockLearningRepo) GetBadgeByID(ctx context.Context, badgeID uuid.UUID) (*domain.Badge, error) {
+	for _, b := range m.badges {
+		if b.ID == badgeID {
+			return b, nil
+		}
+	}
+	return nil, domain.ErrCourseNotFound
+}
+
+func (m *mockLearningRepo) RevokeBadge(ctx context.Context, badgeID uuid.UUID) error {
+	for _, b := range m.badges {
+		if b.ID == badgeID {
+			b.IsRevoked = true
+		}
+	}
+	return nil
+}
+
 type mockCourseRepo struct {
 	course  *domain.Course
 	version *domain.CourseVersion
@@ -154,7 +172,14 @@ func (c *mockCourseRepo) PublishVersion(ctx context.Context, courseID uuid.UUID,
 func (c *mockCourseRepo) CreateModule(ctx context.Context, module *domain.Module) error { return nil }
 func (c *mockCourseRepo) CreateUnit(ctx context.Context, unit *domain.Unit) error { return nil }
 func (c *mockCourseRepo) CreateResource(ctx context.Context, resource *domain.Resource) error { return nil }
+func (c *mockCourseRepo) GetResourceByID(ctx context.Context, resourceID uuid.UUID) (*domain.Resource, error) { return nil, nil }
 func (c *mockCourseRepo) UpdateResource(ctx context.Context, resource *domain.Resource) error { return nil }
+func (c *mockCourseRepo) DeleteResource(ctx context.Context, resourceID uuid.UUID) error { return nil }
+func (c *mockCourseRepo) UnpublishCourse(ctx context.Context, courseID uuid.UUID) error { return nil }
+func (c *mockCourseRepo) GetLatestDraftVersion(ctx context.Context, courseID uuid.UUID) (*domain.CourseVersion, error) { return nil, nil }
+func (c *mockCourseRepo) ReorderModules(ctx context.Context, versionID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
+func (c *mockCourseRepo) ReorderUnits(ctx context.Context, moduleID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
+func (c *mockCourseRepo) ReorderResources(ctx context.Context, unitID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
 
 type mockUserRepo struct{}
 func (u *mockUserRepo) CreateUser(ctx context.Context, user *domain.User) error { return nil }
@@ -170,6 +195,8 @@ func (u *mockUserRepo) CreateToken(ctx context.Context, token *domain.UserToken)
 func (u *mockUserRepo) GetToken(ctx context.Context, tokenStr string, tokenType string) (*domain.UserToken, error) { return nil, nil }
 func (u *mockUserRepo) MarkTokenUsed(ctx context.Context, id uuid.UUID) error { return nil }
 func (u *mockUserRepo) CreateAuditLog(ctx context.Context, log *domain.AuditLog) error { return nil }
+func (u *mockUserRepo) ListUsers(ctx context.Context, role *domain.Role, status *domain.UserStatus, search string, limit, offset int) ([]*domain.User, int, error) { return nil, 0, nil }
+func (u *mockUserRepo) ListAuditLogs(ctx context.Context, limit, offset int) ([]*domain.AuditLog, int, error) { return nil, 0, nil }
 
 func TestServerSideQuizGrading(t *testing.T) {
 	lRepo := newMockLearningRepo()

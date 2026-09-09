@@ -3,10 +3,13 @@ package user
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mooc-platform/backend/internal/domain"
+	"github.com/mooc-platform/backend/internal/middleware"
 )
 
 type HTTPHandler struct {
@@ -22,12 +25,17 @@ func (h *HTTPHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/register", h.RegisterStudent)
 		r.Post("/verify-email", h.VerifyEmail)
 		r.Post("/login", h.Login)
+		r.Post("/logout", h.Logout)
+		r.Post("/forgot-password", h.ForgotPassword)
+		r.Post("/reset-password", h.ResetPassword)
 	})
 
 	r.Route("/api/v1/admin", func(r chi.Router) {
+		r.Get("/users", h.ListUsers)
 		r.Post("/teachers", h.CreateTeacher)
 		r.Post("/users/invite-teacher", h.CreateTeacher)
 		r.Patch("/users/{id}/status", h.ChangeUserStatus)
+		r.Get("/audit-logs", h.ListAuditLogs)
 	})
 }
 
@@ -116,15 +124,76 @@ func (h *HTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, output)
 }
 
-func (h *HTTPHandler) CreateTeacher(w http.ResponseWriter, r *http.Request) {
-	adminIDStr := r.Header.Get("X-Admin-ID")
-	var adminID uuid.UUID
-	var err error
-	if adminIDStr != "" {
-		adminID, err = uuid.Parse(adminIDStr)
+func (h *HTTPHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	tokenStr := ""
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
 	}
-	if err != nil || adminID == uuid.Nil {
-		// Usar ID del Admin inicial por defecto
+
+	if session := middleware.GetSessionFromContext(r.Context()); session != nil {
+		tokenStr = session.Token
+	}
+
+	if tokenStr != "" {
+		_ = h.useCase.Logout(r.Context(), tokenStr)
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Sesión cerrada exitosamente"})
+}
+
+func (h *HTTPHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		respondError(w, http.StatusBadRequest, "Se requiere email válido")
+		return
+	}
+
+	resetToken, err := h.useCase.ForgotPassword(r.Context(), req.Email)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]any{
+		"message":     "Instrucciones enviadas si el correo está registrado",
+		"reset_token": resetToken, // En producción se envía por correo
+	})
+}
+
+func (h *HTTPHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Token == "" || req.NewPassword == "" {
+		respondError(w, http.StatusBadRequest, "Token y new_password son requeridos")
+		return
+	}
+
+	if err := h.useCase.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Contraseña restablecida exitosamente"})
+}
+
+func (h *HTTPHandler) CreateTeacher(w http.ResponseWriter, r *http.Request) {
+	authUser := middleware.GetUserFromContext(r.Context())
+	adminID := uuid.Nil
+	if authUser != nil {
+		adminID = authUser.ID
+	} else {
+		adminIDStr := r.Header.Get("X-Admin-ID")
+		if adminIDStr != "" {
+			adminID, _ = uuid.Parse(adminIDStr)
+		}
+	}
+
+	if adminID == uuid.Nil {
 		adminID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	}
 
@@ -152,13 +221,18 @@ func (h *HTTPHandler) CreateTeacher(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandler) ChangeUserStatus(w http.ResponseWriter, r *http.Request) {
-	adminIDStr := r.Header.Get("X-Admin-ID")
-	var adminID uuid.UUID
-	var err error
-	if adminIDStr != "" {
-		adminID, err = uuid.Parse(adminIDStr)
+	authUser := middleware.GetUserFromContext(r.Context())
+	adminID := uuid.Nil
+	if authUser != nil {
+		adminID = authUser.ID
+	} else {
+		adminIDStr := r.Header.Get("X-Admin-ID")
+		if adminIDStr != "" {
+			adminID, _ = uuid.Parse(adminIDStr)
+		}
 	}
-	if err != nil || adminID == uuid.Nil {
+
+	if adminID == uuid.Nil {
 		adminID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	}
 
@@ -191,4 +265,63 @@ func (h *HTTPHandler) ChangeUserStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Estado de usuario actualizado exitosamente"})
+}
+
+func (h *HTTPHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	roleStr := q.Get("role")
+	statusStr := q.Get("status")
+	search := q.Get("search")
+	limitStr := q.Get("limit")
+	offsetStr := q.Get("offset")
+
+	limit, _ := strconv.Atoi(limitStr)
+	offset, _ := strconv.Atoi(offsetStr)
+
+	var role *domain.Role
+	if roleStr != "" {
+		r := domain.Role(roleStr)
+		role = &r
+	}
+
+	var status *domain.UserStatus
+	if statusStr != "" {
+		s := domain.UserStatus(statusStr)
+		status = &s
+	}
+
+	users, total, err := h.useCase.ListUsers(r.Context(), role, status, search, limit, offset)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]any{
+		"users":  users,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+func (h *HTTPHandler) ListAuditLogs(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limitStr := q.Get("limit")
+	offsetStr := q.Get("offset")
+
+	limit, _ := strconv.Atoi(limitStr)
+	offset, _ := strconv.Atoi(offsetStr)
+
+	logs, total, err := h.useCase.ListAuditLogs(r.Context(), limit, offset)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]any{
+		"audit_logs": logs,
+		"total":      total,
+		"limit":      limit,
+		"offset":     offset,
+	})
 }

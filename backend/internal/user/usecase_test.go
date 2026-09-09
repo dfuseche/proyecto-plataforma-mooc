@@ -120,6 +120,18 @@ func (m *mockUserRepo) CreateAuditLog(ctx context.Context, al *domain.AuditLog) 
 	return nil
 }
 
+func (m *mockUserRepo) ListUsers(ctx context.Context, role *domain.Role, status *domain.UserStatus, search string, limit, offset int) ([]*domain.User, int, error) {
+	res := make([]*domain.User, 0)
+	for _, u := range m.usersByID {
+		res = append(res, u)
+	}
+	return res, len(res), nil
+}
+
+func (m *mockUserRepo) ListAuditLogs(ctx context.Context, limit, offset int) ([]*domain.AuditLog, int, error) {
+	return m.auditLogs, len(m.auditLogs), nil
+}
+
 func TestRegisterAndVerifyStudent(t *testing.T) {
 	repo := newMockUserRepo()
 	uc := NewUseCase(repo)

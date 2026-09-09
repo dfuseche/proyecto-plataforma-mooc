@@ -84,4 +84,6 @@ type UserRepository interface {
 	MarkTokenUsed(ctx context.Context, id uuid.UUID) error
 	
 	CreateAuditLog(ctx context.Context, log *AuditLog) error
+	ListUsers(ctx context.Context, role *Role, status *UserStatus, search string, limit, offset int) ([]*User, int, error)
+	ListAuditLogs(ctx context.Context, limit, offset int) ([]*AuditLog, int, error)
 }

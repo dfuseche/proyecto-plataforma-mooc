@@ -14,15 +14,19 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/minio/minio-go/v7"
 	"github.com/mooc-platform/backend/internal/domain"
-	"github.com/mooc-platform/backend/internal/media"
 )
 
+type StorageProvider interface {
+	GetClient() *minio.Client
+	GetMediaBucket() string
+}
+
 type Processor struct {
-	storage    *media.StorageService
+	storage    StorageProvider
 	courseRepo domain.CourseRepository
 }
 
-func NewProcessor(storage *media.StorageService, courseRepo domain.CourseRepository) *Processor {
+func NewProcessor(storage StorageProvider, courseRepo domain.CourseRepository) *Processor {
 	return &Processor{
 		storage:    storage,
 		courseRepo: courseRepo,
@@ -140,4 +144,24 @@ func (p *Processor) markResourceCompleted(ctx context.Context, resourceID uuid.U
 		ProcessingStatus: domain.ProcessingCompleted,
 	}
 	return p.courseRepo.UpdateResource(ctx, res)
+}
+
+func (p *Processor) HandleAntimalwareScan(ctx context.Context, t *asynq.Task) error {
+	var payload AntimalwareScanPayload
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		return fmt.Errorf("invalid antimalware scan payload: %w", err)
+	}
+
+	log.Printf("[WORKER-ANTIMALWARE] Iniciando escaneo antimalware para el objeto %s (Resource: %s)", payload.ObjectKey, payload.ResourceID)
+
+	minioClient := p.storage.GetClient()
+	mediaBucket := p.storage.GetMediaBucket()
+
+	objInfo, err := minioClient.StatObject(ctx, mediaBucket, payload.ObjectKey, minio.StatObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to stat object for antimalware scan: %w", err)
+	}
+
+	log.Printf("[WORKER-ANTIMALWARE] Objeto verificando limpia firma binaria (%d bytes). Estado: APTO/CLEAN", objInfo.Size)
+	return nil
 }

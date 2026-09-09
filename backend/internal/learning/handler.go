@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mooc-platform/backend/internal/domain"
+	"github.com/mooc-platform/backend/internal/middleware"
 )
 
 type HTTPHandler struct {
@@ -20,13 +21,22 @@ func NewHTTPHandler(uc *UseCase) *HTTPHandler {
 func (h *HTTPHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/api/v1/learning", func(r chi.Router) {
 		r.Post("/enrollments", h.EnrollStudent)
+		r.Get("/quizzes/{quizId}/snapshot", h.GetQuizSnapshot)
+		r.Post("/quizzes/{quizId}/start-attempt", h.StartQuizAttempt)
+		r.Patch("/attempts/{attemptId}", h.SavePartialAttempt)
 		r.Post("/quizzes/{quizId}/attempts", h.SubmitQuizAttempt)
 		r.Post("/heartbeat", h.RecordHeartbeat)
+	})
+
+	r.Route("/api/v1/courses/resources/{resourceId}/quiz", func(r chi.Router) {
+		r.Post("/", h.CreateQuiz)
 	})
 
 	r.Route("/api/v1/badges", func(r chi.Router) {
 		r.Get("/verify/{code}", h.VerifyBadge)
 	})
+
+	r.Post("/api/v1/admin/badges/{badgeId}/revoke", h.RevokeBadge)
 }
 
 type APIResponse struct {
@@ -48,6 +58,12 @@ func respondError(w http.ResponseWriter, status int, message string) {
 }
 
 func (h *HTTPHandler) EnrollStudent(w http.ResponseWriter, r *http.Request) {
+	authUser := middleware.GetUserFromContext(r.Context())
+	studentID := uuid.Nil
+	if authUser != nil {
+		studentID = authUser.ID
+	}
+
 	var req struct {
 		StudentID string `json:"student_id"`
 		CourseID  string `json:"course_id"`
@@ -57,9 +73,12 @@ func (h *HTTPHandler) EnrollStudent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	studentID, err1 := uuid.Parse(req.StudentID)
-	courseID, err2 := uuid.Parse(req.CourseID)
-	if err1 != nil || err2 != nil {
+	if studentID == uuid.Nil && req.StudentID != "" {
+		studentID, _ = uuid.Parse(req.StudentID)
+	}
+
+	courseID, err := uuid.Parse(req.CourseID)
+	if err != nil || studentID == uuid.Nil {
 		respondError(w, http.StatusBadRequest, "IDs de estudiante o curso inválidos")
 		return
 	}
@@ -77,12 +96,99 @@ func (h *HTTPHandler) EnrollStudent(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, enrollment)
 }
 
-func (h *HTTPHandler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
+	resourceIDStr := chi.URLParam(r, "resourceId")
+	resourceID, err := uuid.Parse(resourceIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de recurso inválido")
+		return
+	}
+
+	var quiz domain.Quiz
+	if err := json.NewDecoder(r.Body).Decode(&quiz); err != nil {
+		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
+		return
+	}
+	quiz.ResourceID = resourceID
+
+	createdQuiz, err := h.useCase.CreateQuiz(r.Context(), uuid.Nil, &quiz)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, createdQuiz)
+}
+
+func (h *HTTPHandler) GetQuizSnapshot(w http.ResponseWriter, r *http.Request) {
 	quizIDStr := chi.URLParam(r, "quizId")
 	quizID, err := uuid.Parse(quizIDStr)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "ID de quiz inválido")
 		return
+	}
+
+	snapshot, err := h.useCase.GetQuizSnapshot(r.Context(), quizID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "Quiz no encontrado")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, snapshot)
+}
+
+func (h *HTTPHandler) StartQuizAttempt(w http.ResponseWriter, r *http.Request) {
+	quizIDStr := chi.URLParam(r, "quizId")
+	quizID, err := uuid.Parse(quizIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de quiz inválido")
+		return
+	}
+
+	authUser := middleware.GetUserFromContext(r.Context())
+	studentID := uuid.Nil
+	if authUser != nil {
+		studentID = authUser.ID
+	}
+
+	var req struct {
+		StudentID string `json:"student_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	if studentID == uuid.Nil && req.StudentID != "" {
+		studentID, _ = uuid.Parse(req.StudentID)
+	}
+
+	if studentID == uuid.Nil {
+		respondError(w, http.StatusUnauthorized, "Se requiere estudiante autenticado")
+		return
+	}
+
+	attempt, err := h.useCase.StartQuizAttempt(r.Context(), studentID, quizID)
+	if err != nil {
+		if err == domain.ErrMaxAttemptsReached {
+			respondError(w, http.StatusConflict, err.Error())
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, attempt)
+}
+
+func (h *HTTPHandler) SavePartialAttempt(w http.ResponseWriter, r *http.Request) {
+	attemptIDStr := chi.URLParam(r, "attemptId")
+	attemptID, err := uuid.Parse(attemptIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de intento inválido")
+		return
+	}
+
+	authUser := middleware.GetUserFromContext(r.Context())
+	studentID := uuid.Nil
+	if authUser != nil {
+		studentID = authUser.ID
 	}
 
 	var req struct {
@@ -94,10 +200,48 @@ func (h *HTTPHandler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	studentID, err := uuid.Parse(req.StudentID)
+	if studentID == uuid.Nil && req.StudentID != "" {
+		studentID, _ = uuid.Parse(req.StudentID)
+	}
+
+	attempt, err := h.useCase.SavePartialAttempt(r.Context(), studentID, attemptID, req.Answers)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "ID de estudiante inválido")
+		if err == domain.ErrAttemptAlreadySubmitted {
+			respondError(w, http.StatusConflict, err.Error())
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	respondJSON(w, http.StatusOK, attempt)
+}
+
+func (h *HTTPHandler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) {
+	quizIDStr := chi.URLParam(r, "quizId")
+	quizID, err := uuid.Parse(quizIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de quiz inválido")
+		return
+	}
+
+	authUser := middleware.GetUserFromContext(r.Context())
+	studentID := uuid.Nil
+	if authUser != nil {
+		studentID = authUser.ID
+	}
+
+	var req struct {
+		StudentID string            `json:"student_id"`
+		Answers   map[string]string `json:"answers"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
+		return
+	}
+
+	if studentID == uuid.Nil && req.StudentID != "" {
+		studentID, _ = uuid.Parse(req.StudentID)
 	}
 
 	attempt, err := h.useCase.SubmitQuizAttempt(r.Context(), studentID, quizID, req.Answers)
@@ -114,10 +258,16 @@ func (h *HTTPHandler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *HTTPHandler) RecordHeartbeat(w http.ResponseWriter, r *http.Request) {
+	authUser := middleware.GetUserFromContext(r.Context())
+
 	var input HeartbeatInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
 		return
+	}
+
+	if authUser != nil && input.StudentID == uuid.Nil {
+		input.StudentID = authUser.ID
 	}
 
 	enrollment, err := h.useCase.RecordHeartbeat(r.Context(), input)
@@ -148,4 +298,29 @@ func (h *HTTPHandler) VerifyBadge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, badge)
+}
+
+func (h *HTTPHandler) RevokeBadge(w http.ResponseWriter, r *http.Request) {
+	badgeIDStr := chi.URLParam(r, "badgeId")
+	badgeID, err := uuid.Parse(badgeIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de insignia inválido")
+		return
+	}
+
+	authUser := middleware.GetUserFromContext(r.Context())
+	adminID := uuid.Nil
+	if authUser != nil {
+		adminID = authUser.ID
+	}
+	if adminID == uuid.Nil {
+		adminID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	}
+
+	if err := h.useCase.RevokeBadge(r.Context(), adminID, badgeID); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Insignia revocada exitosamente"})
 }

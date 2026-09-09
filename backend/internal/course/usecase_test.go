@@ -143,6 +143,40 @@ func (m *mockCourseRepo) UpdateResource(ctx context.Context, res *domain.Resourc
 	return nil
 }
 
+func (m *mockCourseRepo) GetResourceByID(ctx context.Context, resourceID uuid.UUID) (*domain.Resource, error) {
+	r, ok := m.resources[resourceID]
+	if !ok {
+		return nil, domain.ErrResourceNotFound
+	}
+	return r, nil
+}
+
+func (m *mockCourseRepo) DeleteResource(ctx context.Context, resourceID uuid.UUID) error {
+	delete(m.resources, resourceID)
+	return nil
+}
+
+func (m *mockCourseRepo) UnpublishCourse(ctx context.Context, courseID uuid.UUID) error {
+	c, ok := m.courses[courseID]
+	if ok {
+		c.CurrentPublishedVersionID = nil
+	}
+	return nil
+}
+
+func (m *mockCourseRepo) GetLatestDraftVersion(ctx context.Context, courseID uuid.UUID) (*domain.CourseVersion, error) {
+	for _, v := range m.versions {
+		if v.CourseID == courseID && v.Status == domain.VersionStatusDraft {
+			return v, nil
+		}
+	}
+	return nil, domain.ErrVersionNotFound
+}
+
+func (m *mockCourseRepo) ReorderModules(ctx context.Context, versionID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
+func (m *mockCourseRepo) ReorderUnits(ctx context.Context, moduleID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
+func (m *mockCourseRepo) ReorderResources(ctx context.Context, unitID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
+
 type mockUserRepo struct{}
 func (u *mockUserRepo) CreateUser(ctx context.Context, user *domain.User) error { return nil }
 func (u *mockUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
@@ -159,6 +193,8 @@ func (u *mockUserRepo) CreateToken(ctx context.Context, token *domain.UserToken)
 func (u *mockUserRepo) GetToken(ctx context.Context, tokenStr string, tokenType string) (*domain.UserToken, error) { return nil, nil }
 func (u *mockUserRepo) MarkTokenUsed(ctx context.Context, id uuid.UUID) error { return nil }
 func (u *mockUserRepo) CreateAuditLog(ctx context.Context, log *domain.AuditLog) error { return nil }
+func (u *mockUserRepo) ListUsers(ctx context.Context, role *domain.Role, status *domain.UserStatus, search string, limit, offset int) ([]*domain.User, int, error) { return nil, 0, nil }
+func (u *mockUserRepo) ListAuditLogs(ctx context.Context, limit, offset int) ([]*domain.AuditLog, int, error) { return nil, 0, nil }
 
 func TestCoursePublicationValidation(t *testing.T) {
 	cRepo := newMockCourseRepo()

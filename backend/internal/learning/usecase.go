@@ -2,6 +2,7 @@ package learning
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -50,6 +51,131 @@ func (uc *UseCase) EnrollStudent(ctx context.Context, studentID, courseID uuid.U
 	return enrollment, nil
 }
 
+func (uc *UseCase) CreateQuiz(ctx context.Context, teacherID uuid.UUID, quiz *domain.Quiz) (*domain.Quiz, error) {
+	if quiz.ID == uuid.Nil {
+		quiz.ID = uuid.New()
+	}
+	if quiz.MaxAttempts <= 0 {
+		quiz.MaxAttempts = 3
+	}
+	if quiz.PassingScore <= 0 {
+		quiz.PassingScore = 70.0
+	}
+
+	if err := uc.repo.CreateQuiz(ctx, quiz); err != nil {
+		return nil, err
+	}
+
+	return quiz, nil
+}
+
+type QuizSnapshotResponse struct {
+	ID           uuid.UUID                 `json:"id"`
+	ResourceID   uuid.UUID                 `json:"resource_id"`
+	MaxAttempts  int                       `json:"max_attempts"`
+	PassingScore float64                   `json:"passing_score"`
+	Questions    []QuizSnapshotQuestionDTO `json:"questions"`
+}
+
+type QuizSnapshotQuestionDTO struct {
+	ID           uuid.UUID                  `json:"id"`
+	QuestionText string                     `json:"question_text"`
+	Position     int                        `json:"position"`
+	Points       float64                    `json:"points"`
+	Options      []domain.StudentQuizOption `json:"options"`
+}
+
+func (uc *UseCase) GetQuizSnapshot(ctx context.Context, quizID uuid.UUID) (*QuizSnapshotResponse, error) {
+	quiz, err := uc.repo.GetQuizWithAnswers(ctx, quizID)
+	if err != nil {
+		return nil, err
+	}
+
+	questionsDTO := make([]QuizSnapshotQuestionDTO, 0)
+	for _, quest := range quiz.Questions {
+		optsDTO := make([]domain.StudentQuizOption, 0)
+		for _, opt := range quest.Options {
+			optsDTO = append(optsDTO, domain.StudentQuizOption{
+				ID:         opt.ID,
+				QuestionID: opt.QuestionID,
+				OptionText: opt.OptionText,
+				Position:   opt.Position,
+			})
+		}
+		questionsDTO = append(questionsDTO, QuizSnapshotQuestionDTO{
+			ID:           quest.ID,
+			QuestionText: quest.QuestionText,
+			Position:     quest.Position,
+			Points:       quest.Points,
+			Options:      optsDTO,
+		})
+	}
+
+	return &QuizSnapshotResponse{
+		ID:           quiz.ID,
+		ResourceID:   quiz.ResourceID,
+		MaxAttempts:  quiz.MaxAttempts,
+		PassingScore: quiz.PassingScore,
+		Questions:    questionsDTO,
+	}, nil
+}
+
+func (uc *UseCase) StartQuizAttempt(ctx context.Context, studentID, quizID uuid.UUID) (*domain.QuizAttempt, error) {
+	quiz, err := uc.repo.GetQuizWithAnswers(ctx, quizID)
+	if err != nil {
+		return nil, err
+	}
+
+	attemptsCount, err := uc.repo.GetStudentAttemptsCount(ctx, studentID, quizID)
+	if err != nil {
+		return nil, err
+	}
+
+	if attemptsCount >= quiz.MaxAttempts {
+		return nil, domain.ErrMaxAttemptsReached
+	}
+
+	attempt := &domain.QuizAttempt{
+		ID:            uuid.New(),
+		StudentID:     studentID,
+		QuizID:        quizID,
+		AttemptNumber: attemptsCount + 1,
+		Status:        domain.AttemptInProgress,
+		Answers:       make(map[string]string),
+	}
+
+	if err := uc.repo.CreateQuizAttempt(ctx, attempt); err != nil {
+		return nil, err
+	}
+
+	return attempt, nil
+}
+
+func (uc *UseCase) SavePartialAttempt(ctx context.Context, studentID, attemptID uuid.UUID, answers map[string]string) (*domain.QuizAttempt, error) {
+	attempt, err := uc.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return nil, err
+	}
+
+	if attempt.StudentID != studentID {
+		return nil, domain.ErrForbidden
+	}
+
+	if attempt.Status != domain.AttemptInProgress {
+		return nil, domain.ErrAttemptAlreadySubmitted
+	}
+
+	for k, v := range answers {
+		attempt.Answers[k] = v
+	}
+
+	if err := uc.repo.UpdateQuizAttempt(ctx, attempt); err != nil {
+		return nil, err
+	}
+
+	return attempt, nil
+}
+
 func (uc *UseCase) SubmitQuizAttempt(ctx context.Context, studentID, quizID uuid.UUID, answers map[string]string) (*domain.QuizAttempt, error) {
 	quiz, err := uc.repo.GetQuizWithAnswers(ctx, quizID)
 	if err != nil {
@@ -65,7 +191,6 @@ func (uc *UseCase) SubmitQuizAttempt(ctx context.Context, studentID, quizID uuid
 		return nil, domain.ErrMaxAttemptsReached
 	}
 
-	// Calificación en Servidor de forma reproducible
 	var totalPoints float64 = 0
 	var earnedPoints float64 = 0
 
@@ -123,14 +248,23 @@ type HeartbeatInput struct {
 }
 
 func (uc *UseCase) RecordHeartbeat(ctx context.Context, input HeartbeatInput) (*domain.Enrollment, error) {
+	if input.DwellTimeSeconds < 0 || input.LastPositionSeconds < 0 {
+		return nil, errors.New("los valores de tiempo de permanencia y posición deben ser no negativos")
+	}
+
 	enrollment, err := uc.repo.GetEnrollment(ctx, input.StudentID, input.CourseID)
 	if err != nil {
 		return nil, domain.ErrNotEnrolled
 	}
 
-	// Mínimo de permanencia de 10 segundos para considerar el recurso como completado
+	// Limitar permanencia reportada por pulso individual a máximo 300 segundos por seguridad anti-manipulación
+	dwellTime := input.DwellTimeSeconds
+	if dwellTime > 300 {
+		dwellTime = 300
+	}
+
 	status := domain.ProgressOpened
-	if input.DwellTimeSeconds >= 10 {
+	if dwellTime >= 10 {
 		status = domain.ProgressCompleted
 	}
 
@@ -140,7 +274,7 @@ func (uc *UseCase) RecordHeartbeat(ctx context.Context, input HeartbeatInput) (*
 		CourseID:            input.CourseID,
 		ResourceStableID:    input.ResourceStableID,
 		Status:              status,
-		DwellTimeSeconds:    input.DwellTimeSeconds,
+		DwellTimeSeconds:    dwellTime,
 		LastPositionSeconds: input.LastPositionSeconds,
 	}
 
@@ -148,7 +282,6 @@ func (uc *UseCase) RecordHeartbeat(ctx context.Context, input HeartbeatInput) (*
 		return nil, err
 	}
 
-	// Recalcular progreso global basado en recursos obligatorios de la versión publicada actual
 	course, err := uc.courseRepo.GetCourseByID(ctx, input.CourseID)
 	if err != nil || course.CurrentPublishedVersionID == nil {
 		return enrollment, nil
@@ -205,7 +338,7 @@ func (uc *UseCase) RecordHeartbeat(ctx context.Context, input HeartbeatInput) (*
 func (uc *UseCase) IssueBadge(ctx context.Context, studentID, courseID, versionID uuid.UUID) (*domain.Badge, error) {
 	existing, err := uc.repo.GetStudentBadgeForCourse(ctx, studentID, courseID)
 	if err == nil && existing != nil {
-		return existing, nil // Idempotente: retorna la insignia previa
+		return existing, nil
 	}
 
 	verificationCode := uuid.New()
@@ -229,6 +362,28 @@ func (uc *UseCase) IssueBadge(ctx context.Context, studentID, courseID, versionI
 	}
 
 	return badge, nil
+}
+
+func (uc *UseCase) RevokeBadge(ctx context.Context, adminID, badgeID uuid.UUID) error {
+	badge, err := uc.repo.GetBadgeByID(ctx, badgeID)
+	if err != nil {
+		return err
+	}
+	if badge.IsRevoked {
+		return nil
+	}
+	if err := uc.repo.RevokeBadge(ctx, badgeID); err != nil {
+		return err
+	}
+
+	_ = uc.userRepo.CreateAuditLog(ctx, &domain.AuditLog{
+		ActorID:        &adminID,
+		Action:         "BADGE_REVOKED",
+		TargetResource: "badges",
+		TargetID:       &badgeID,
+		Payload:        map[string]any{"student_id": badge.StudentID, "course_id": badge.CourseID},
+	})
+	return nil
 }
 
 func (uc *UseCase) VerifyBadge(ctx context.Context, verificationCode uuid.UUID) (*domain.Badge, error) {

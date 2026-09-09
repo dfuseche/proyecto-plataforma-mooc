@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "mooc-platform-api-collection-v3",
+		"_postman_id": "mooc-platform-api-collection-v4",
 		"name": "Plataforma MOOC - Colección Completa de Pruebas API REST",
-		"description": "Colección oficial de Postman para probar todos los servicios backend de la Plataforma MOOC (Autenticación Admin/Profesor/Estudiante, Autoría de Cursos, Carga S3, Quizzes, Progreso e Insignias).",
+		"description": "Colección oficial de Postman para probar todos los servicios backend de la Plataforma MOOC (Autenticación Bearer, Administración de Usuarios, Auditoría, Autoría de Cursos, Borradores e IDs estables, Carga S3 y Streaming, Engine de Quizzes, Heartbeats e Insignias).",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -55,14 +55,44 @@
 			"key": "versionId",
 			"value": "",
 			"type": "string"
+		},
+		{
+			"key": "moduleId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "unitId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "resourceId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "quizId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "attemptId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "badgeId",
+			"value": "",
+			"type": "string"
 		}
 	],
 	"item": [
 		{
-			"name": "01 - Autenticación y Gestión de Usuarios",
+			"name": "01 - Autenticación y Gestión de Sesión",
 			"item": [
 				{
-					"name": "Healthcheck",
+					"name": "01.0 - Healthcheck API",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -133,6 +163,10 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
 							},
 							{
 								"key": "X-Admin-ID",
@@ -282,14 +316,76 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "01.7 - Solicitar Olvido de Contraseña",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"estudiante.postman@mooc.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "forgot-password"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.8 - Restablecer Contraseña",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"<TOKEN_RECIBIDO_EN_EMAIL>\",\n  \"new_password\": \"NewPassword123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/reset-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "reset-password"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "01.9 - Logout (Cierre de Sesión)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "logout"]
+						}
+					},
+					"response": []
 				}
 			]
 		},
 		{
-			"name": "02 - Autoría de Cursos y Jerarquía",
+			"name": "02 - Autoría de Cursos y Versiones",
 			"item": [
 				{
-					"name": "Listar Catálogo de Cursos",
+					"name": "02.1 - Listar Catálogo Público de Cursos",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -302,7 +398,7 @@
 					"response": []
 				},
 				{
-					"name": "Crear Borrador de Curso (Profesor)",
+					"name": "02.2 - Crear Borrador de Curso (Profesor)",
 					"event": [
 						{
 							"listen": "test",
@@ -326,6 +422,10 @@
 								"value": "application/json"
 							},
 							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							},
+							{
 								"key": "X-Teacher-ID",
 								"value": "{{teacherId}}"
 							}
@@ -341,20 +441,281 @@
 						}
 					},
 					"response": []
-				}
-			]
-		},
-		{
-			"name": "03 - Almacenamiento S3 y Carga Directa",
-			"item": [
+				},
 				{
-					"name": "Generar URL Prefirmada Carga S3",
+					"name": "02.3 - Agregar Módulo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('moduleId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Módulo 1: Fundamentos de Go\",\n  \"summary\": \"Introducción a la sintaxis de Go\",\n  \"position\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/versions/{{versionId}}/modules",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "versions", "{{versionId}}", "modules"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.4 - Reordenar Módulos",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ordered_ids\": [\"{{moduleId}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/versions/{{versionId}}/reorder-modules",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "versions", "{{versionId}}", "reorder-modules"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.5 - Agregar Unidad",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('unitId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Unidad 1.1: Hola Mundo y Variables\",\n  \"position\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/modules/{{moduleId}}/units",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "modules", "{{moduleId}}", "units"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.6 - Agregar Recurso",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('resourceId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Video Introductorio de Go\",\n  \"type\": \"video\",\n  \"is_visible\": true,\n  \"is_mandatory\": true,\n  \"position\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/units/{{unitId}}/resources",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "units", "{{unitId}}", "resources"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.7 - Editar Recurso",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Video Introductorio Editado\",\n  \"type\": \"video\",\n  \"is_visible\": true,\n  \"is_mandatory\": true,\n  \"position\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/resources/{{resourceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "resources", "{{resourceId}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.8 - Previsualización de Borrador (Profesor/Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/{{courseId}}/preview",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "{{courseId}}", "preview"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.9 - Publicar Versión de Curso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/versions/{{versionId}}/publish",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "versions", "{{versionId}}", "publish"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.10 - Obtener Jerarquía de Curso Publicado",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/{{courseId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "{{courseId}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.11 - Despublicar Curso (Mantenimiento)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/{{courseId}}/unpublish",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "{{courseId}}", "unpublish"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02.12 - Crear Borrador de Actualización (Preservando IDs)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/{{courseId}}/create-draft",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "{{courseId}}", "create-draft"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "03 - Multimedia y Pipeline S3",
+			"item": [
+				{
+					"name": "03.1 - Generar URL Prefirmada Carga S3",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
 							}
 						],
 						"body": {
@@ -368,6 +729,68 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "03.2 - Notificar Carga Completa y Encolar HLS",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"object_key\": \"cursos/video-introduccion.mp4\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/media/resources/{{resourceId}}/complete-upload",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "media", "resources", "{{resourceId}}", "complete-upload"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "03.3 - Obtener URL Prefirmada de Streaming HLS",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/media/resources/{{resourceId}}/stream-url",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "media", "resources", "{{resourceId}}", "stream-url"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "03.4 - Obtener Posición de Reanudación",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/media/resources/{{resourceId}}/resume",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "media", "resources", "{{resourceId}}", "resume"]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -375,13 +798,159 @@
 			"name": "04 - Quizzes, Progreso e Insignias",
 			"item": [
 				{
-					"name": "Inscribir Estudiante a Curso",
+					"name": "04.1 - Crear Quiz en Recurso",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('quizId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{teacherToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"max_attempts\": 3,\n  \"passing_score\": 80.0,\n  \"questions\": [\n    {\n      \"question_text\": \"¿Qué palabra clave declara una variable en Go?\",\n      \"points\": 100.0,\n      \"options\": [\n        {\"option_text\": \"var\", \"is_correct\": true},\n        {\"option_text\": \"let\", \"is_correct\": false}\n      ]\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/courses/resources/{{resourceId}}/quiz",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "courses", "resources", "{{resourceId}}", "quiz"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04.2 - Obtener Snapshot Seguro de Quiz (Sin Claves)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/learning/quizzes/{{quizId}}/snapshot",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "learning", "quizzes", "{{quizId}}", "snapshot"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04.3 - Iniciar Intento de Quiz",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('attemptId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/learning/quizzes/{{quizId}}/start-attempt",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "learning", "quizzes", "{{quizId}}", "start-attempt"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04.4 - Guardado Parcial de Respuestas de Intento",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"answers\": {}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/learning/attempts/{{attemptId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "learning", "attempts", "{{attemptId}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04.5 - Enviar Intento de Quiz para Calificación",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"attempt_id\": \"{{attemptId}}\",\n  \"answers\": {}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/learning/quizzes/{{quizId}}/attempts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "learning", "quizzes", "{{quizId}}", "attempts"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04.6 - Inscribir Estudiante a Curso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
 							}
 						],
 						"body": {
@@ -397,13 +966,17 @@
 					"response": []
 				},
 				{
-					"name": "Registrar Heartbeat de Progreso",
+					"name": "04.7 - Registrar Heartbeat de Progreso",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{studentToken}}"
 							}
 						],
 						"body": {
@@ -414,6 +987,132 @@
 							"raw": "{{baseUrl}}/api/v1/learning/heartbeat",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "v1", "learning", "heartbeat"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04.8 - Verificar Autenticidad de Insignia",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/badges/verify/{{verificationCode}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "badges", "verify", "{{verificationCode}}"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "05 - Administración y Auditoría",
+			"item": [
+				{
+					"name": "05.1 - Listar Usuarios con Filtros (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/users?role=student&status=active&limit=20&offset=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "admin", "users"],
+							"query": [
+								{
+									"key": "role",
+									"value": "student"
+								},
+								{
+									"key": "status",
+									"value": "active"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05.2 - Cambiar Estado de Usuario (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"suspended\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/users/{{studentId}}/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "admin", "users", "{{studentId}}", "status"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05.3 - Consultar Registros de Auditoría (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/audit-logs?limit=20&offset=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "admin", "audit-logs"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05.4 - Revocar Insignia Emitida (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/badges/{{badgeId}}/revoke",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "admin", "badges", "{{badgeId}}", "revoke"]
 						}
 					},
 					"response": []

@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/mooc-platform/backend/internal/domain"
+	"github.com/mooc-platform/backend/internal/middleware"
 )
 
 type HTTPHandler struct {
@@ -23,9 +24,22 @@ func (h *HTTPHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/", h.ListCourses)
 		r.Post("/", h.CreateCourse)
 		r.Get("/{id}", h.GetCourseHierarchy)
+		r.Get("/{id}/preview", h.GetCourseDraftPreview)
+		r.Post("/{id}/unpublish", h.UnpublishCourse)
+		r.Post("/{id}/create-draft", h.CreateDraftFromPublished)
+
 		r.Post("/versions/{versionId}/modules", h.AddModule)
+		r.Patch("/versions/{versionId}/reorder-modules", h.ReorderModules)
+
 		r.Post("/modules/{moduleId}/units", h.AddUnit)
+		r.Patch("/modules/{moduleId}/reorder-units", h.ReorderUnits)
+
 		r.Post("/units/{unitId}/resources", h.AddResource)
+		r.Patch("/units/{unitId}/reorder-resources", h.ReorderResources)
+
+		r.Put("/resources/{id}", h.UpdateResource)
+		r.Delete("/resources/{id}", h.DeleteResource)
+
 		r.Post("/versions/{versionId}/publish", h.PublishVersion)
 	})
 }
@@ -68,18 +82,21 @@ func (h *HTTPHandler) ListCourses(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
-	teacherIDStr := r.Header.Get("X-Teacher-ID")
-	if teacherIDStr == "" {
-		teacherIDStr = r.Header.Get("X-Admin-ID")
+	authUser := middleware.GetUserFromContext(r.Context())
+	teacherID := uuid.Nil
+	if authUser != nil {
+		teacherID = authUser.ID
+	} else {
+		teacherIDStr := r.Header.Get("X-Teacher-ID")
+		if teacherIDStr == "" {
+			teacherIDStr = r.Header.Get("X-Admin-ID")
+		}
+		if teacherIDStr != "" {
+			teacherID, _ = uuid.Parse(teacherIDStr)
+		}
 	}
 
-	var teacherID uuid.UUID
-	var err error
-	if teacherIDStr != "" {
-		teacherID, err = uuid.Parse(teacherIDStr)
-	}
-	if err != nil || teacherID == uuid.Nil {
-		// Mock ID por defecto para pruebas sencillas
+	if teacherID == uuid.Nil {
 		teacherID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	}
 
@@ -124,6 +141,60 @@ func (h *HTTPHandler) GetCourseHierarchy(w http.ResponseWriter, r *http.Request)
 	}
 
 	respondJSON(w, http.StatusOK, hierarchy)
+}
+
+func (h *HTTPHandler) GetCourseDraftPreview(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	courseID, err := uuid.Parse(idStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de curso inválido")
+		return
+	}
+
+	draft, err := h.useCase.GetCourseDraftPreview(r.Context(), uuid.Nil, courseID)
+	if err != nil {
+		if err == domain.ErrVersionNotFound {
+			respondError(w, http.StatusNotFound, "No existe un borrador de actualización disponible")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, draft)
+}
+
+func (h *HTTPHandler) CreateDraftFromPublished(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	courseID, err := uuid.Parse(idStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de curso inválido")
+		return
+	}
+
+	draft, err := h.useCase.CreateDraftFromPublished(r.Context(), uuid.Nil, courseID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, draft)
+}
+
+func (h *HTTPHandler) UnpublishCourse(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	courseID, err := uuid.Parse(idStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de curso inválido")
+		return
+	}
+
+	if err := h.useCase.UnpublishCourse(r.Context(), uuid.Nil, courseID); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Curso despublicado temporalmente"})
 }
 
 func (h *HTTPHandler) AddModule(w http.ResponseWriter, r *http.Request) {
@@ -205,6 +276,118 @@ func (h *HTTPHandler) AddResource(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusCreated, createdRes)
+}
+
+func (h *HTTPHandler) UpdateResource(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	resourceID, err := uuid.Parse(idStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de recurso inválido")
+		return
+	}
+
+	var res domain.Resource
+	if err := json.NewDecoder(r.Body).Decode(&res); err != nil {
+		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
+		return
+	}
+	res.ID = resourceID
+
+	updatedRes, err := h.useCase.UpdateResource(r.Context(), uuid.Nil, &res)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, updatedRes)
+}
+
+func (h *HTTPHandler) DeleteResource(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	resourceID, err := uuid.Parse(idStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de recurso inválido")
+		return
+	}
+
+	if err := h.useCase.DeleteResource(r.Context(), uuid.Nil, resourceID); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Recurso eliminado exitosamente"})
+}
+
+func (h *HTTPHandler) ReorderModules(w http.ResponseWriter, r *http.Request) {
+	versionIDStr := chi.URLParam(r, "versionId")
+	versionID, err := uuid.Parse(versionIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de versión inválido")
+		return
+	}
+
+	var req struct {
+		OrderedIDs []uuid.UUID `json:"ordered_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
+		return
+	}
+
+	if err := h.useCase.ReorderModules(r.Context(), uuid.Nil, versionID, req.OrderedIDs); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Módulos reordenados exitosamente"})
+}
+
+func (h *HTTPHandler) ReorderUnits(w http.ResponseWriter, r *http.Request) {
+	moduleIDStr := chi.URLParam(r, "moduleId")
+	moduleID, err := uuid.Parse(moduleIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de módulo inválido")
+		return
+	}
+
+	var req struct {
+		OrderedIDs []uuid.UUID `json:"ordered_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
+		return
+	}
+
+	if err := h.useCase.ReorderUnits(r.Context(), uuid.Nil, moduleID, req.OrderedIDs); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Unidades reordenadas exitosamente"})
+}
+
+func (h *HTTPHandler) ReorderResources(w http.ResponseWriter, r *http.Request) {
+	unitIDStr := chi.URLParam(r, "unitId")
+	unitID, err := uuid.Parse(unitIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de unidad inválido")
+		return
+	}
+
+	var req struct {
+		OrderedIDs []uuid.UUID `json:"ordered_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
+		return
+	}
+
+	if err := h.useCase.ReorderResources(r.Context(), uuid.Nil, unitID, req.OrderedIDs); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Recursos reordenados exitosamente"})
 }
 
 func (h *HTTPHandler) PublishVersion(w http.ResponseWriter, r *http.Request) {

@@ -59,6 +59,7 @@ func main() {
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(worker.TypeMediaTranscodeHLS, processor.HandleMediaTranscodeHLS)
+	mux.HandleFunc(worker.TypeAntimalwareScan, processor.HandleAntimalwareScan)
 
 	log.Println("[WORKER-DAEMON] Worker escuchando en la cola de tareas Redis/Asynq")
 	if err := srv.Run(mux); err != nil {

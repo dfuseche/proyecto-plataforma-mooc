@@ -9,8 +9,8 @@ import (
 )
 
 type UseCase struct {
-	repo       domain.CourseRepository
-	userRepo   domain.UserRepository
+	repo     domain.CourseRepository
+	userRepo domain.UserRepository
 }
 
 func NewUseCase(repo domain.CourseRepository, userRepo domain.UserRepository) *UseCase {
@@ -57,6 +57,78 @@ func (uc *UseCase) CreateCourse(ctx context.Context, teacherID uuid.UUID, input 
 	}
 
 	return course, version, nil
+}
+
+func (uc *UseCase) CreateDraftFromPublished(ctx context.Context, teacherID uuid.UUID, courseID uuid.UUID) (*domain.CourseVersion, error) {
+	course, err := uc.repo.GetCourseByID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+
+	if course.CurrentPublishedVersionID == nil {
+		return nil, domain.ErrVersionNotFound
+	}
+
+	pubVersion, err := uc.repo.GetFullVersionHierarchy(ctx, *course.CurrentPublishedVersionID)
+	if err != nil {
+		return nil, err
+	}
+
+	newVersion := &domain.CourseVersion{
+		ID:            uuid.New(),
+		CourseID:      courseID,
+		VersionNumber: pubVersion.VersionNumber + 1,
+		Status:        domain.VersionStatusDraft,
+		PassingScore:  pubVersion.PassingScore,
+	}
+
+	if err := uc.repo.CreateVersion(ctx, newVersion); err != nil {
+		return nil, err
+	}
+
+	// Copiar jerarquía profunda preservando stable_ids
+	for _, mod := range pubVersion.Modules {
+		newMod := &domain.Module{
+			ID:          uuid.New(),
+			VersionID:   newVersion.ID,
+			StableID:    mod.StableID, // Preservado
+			Title:       mod.Title,
+			Description: mod.Description,
+			Position:    mod.Position,
+		}
+		_ = uc.repo.CreateModule(ctx, newMod)
+
+		for _, u := range mod.Units {
+			newUnit := &domain.Unit{
+				ID:       uuid.New(),
+				ModuleID: newMod.ID,
+				StableID: u.StableID, // Preservado
+				Title:    u.Title,
+				Position: u.Position,
+			}
+			_ = uc.repo.CreateUnit(ctx, newUnit)
+
+			for _, r := range u.Resources {
+				newRes := &domain.Resource{
+					ID:                uuid.New(),
+					UnitID:            newUnit.ID,
+					StableID:          r.StableID, // Preservado
+					Title:             r.Title,
+					Type:              r.Type,
+					CanonicalMarkdown: r.CanonicalMarkdown,
+					MediaURL:          r.MediaURL,
+					IsVisible:         r.IsVisible,
+					IsMandatory:       r.IsMandatory,
+					IsDownloadable:    r.IsDownloadable,
+					Position:          r.Position,
+					ProcessingStatus:  r.ProcessingStatus,
+				}
+				_ = uc.repo.CreateResource(ctx, newRes)
+			}
+		}
+	}
+
+	return uc.repo.GetFullVersionHierarchy(ctx, newVersion.ID)
 }
 
 func (uc *UseCase) AddModule(ctx context.Context, teacherID uuid.UUID, versionID uuid.UUID, title string, description string, position int) (*domain.Module, error) {
@@ -116,6 +188,17 @@ func (uc *UseCase) AddResource(ctx context.Context, teacherID uuid.UUID, resourc
 	return resource, nil
 }
 
+func (uc *UseCase) UpdateResource(ctx context.Context, teacherID uuid.UUID, resource *domain.Resource) (*domain.Resource, error) {
+	if err := uc.repo.UpdateResource(ctx, resource); err != nil {
+		return nil, err
+	}
+	return uc.repo.GetResourceByID(ctx, resource.ID)
+}
+
+func (uc *UseCase) DeleteResource(ctx context.Context, teacherID uuid.UUID, resourceID uuid.UUID) error {
+	return uc.repo.DeleteResource(ctx, resourceID)
+}
+
 func (uc *UseCase) PublishVersion(ctx context.Context, teacherID uuid.UUID, versionID uuid.UUID) (*domain.CourseVersion, error) {
 	versionHierarchy, err := uc.repo.GetFullVersionHierarchy(ctx, versionID)
 	if err != nil {
@@ -126,7 +209,6 @@ func (uc *UseCase) PublishVersion(ctx context.Context, teacherID uuid.UUID, vers
 		return nil, domain.ErrVersionImmutable
 	}
 
-	// Validación estricta de estructura mínima publicable (Módulo -> Unidad -> Recurso visible y disponible)
 	hasValidStructure := false
 	if len(versionHierarchy.Modules) > 0 {
 		for _, mod := range versionHierarchy.Modules {
@@ -163,6 +245,10 @@ func (uc *UseCase) PublishVersion(ctx context.Context, teacherID uuid.UUID, vers
 	return versionHierarchy, nil
 }
 
+func (uc *UseCase) UnpublishCourse(ctx context.Context, teacherID uuid.UUID, courseID uuid.UUID) error {
+	return uc.repo.UnpublishCourse(ctx, courseID)
+}
+
 func (uc *UseCase) GetCourseCatalog(ctx context.Context, limit, offset int) ([]*domain.Course, error) {
 	return uc.repo.ListCourses(ctx, limit, offset)
 }
@@ -178,4 +264,24 @@ func (uc *UseCase) GetCourseHierarchy(ctx context.Context, courseID uuid.UUID) (
 	}
 
 	return uc.repo.GetFullVersionHierarchy(ctx, *course.CurrentPublishedVersionID)
+}
+
+func (uc *UseCase) GetCourseDraftPreview(ctx context.Context, teacherID uuid.UUID, courseID uuid.UUID) (*domain.CourseVersion, error) {
+	draft, err := uc.repo.GetLatestDraftVersion(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	return uc.repo.GetFullVersionHierarchy(ctx, draft.ID)
+}
+
+func (uc *UseCase) ReorderModules(ctx context.Context, teacherID uuid.UUID, versionID uuid.UUID, orderedIDs []uuid.UUID) error {
+	return uc.repo.ReorderModules(ctx, versionID, orderedIDs)
+}
+
+func (uc *UseCase) ReorderUnits(ctx context.Context, teacherID uuid.UUID, moduleID uuid.UUID, orderedIDs []uuid.UUID) error {
+	return uc.repo.ReorderUnits(ctx, moduleID, orderedIDs)
+}
+
+func (uc *UseCase) ReorderResources(ctx context.Context, teacherID uuid.UUID, unitID uuid.UUID, orderedIDs []uuid.UUID) error {
+	return uc.repo.ReorderResources(ctx, unitID, orderedIDs)
 }

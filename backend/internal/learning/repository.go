@@ -315,3 +315,22 @@ func (r *PostgresRepository) GetStudentBadgeForCourse(ctx context.Context, stude
 	}
 	return &b, nil
 }
+
+func (r *PostgresRepository) GetBadgeByID(ctx context.Context, badgeID uuid.UUID) (*domain.Badge, error) {
+	query := `
+		SELECT id, student_id, course_id, course_version_id, verification_code, image_url, verification_url, is_revoked, issued_at
+		FROM badges WHERE id = $1
+	`
+	var b domain.Badge
+	err := r.db.QueryRowContext(ctx, query, badgeID).Scan(&b.ID, &b.StudentID, &b.CourseID, &b.CourseVersionID, &b.VerificationCode, &b.ImageURL, &b.VerificationURL, &b.IsRevoked, &b.IssuedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
+}
+
+func (r *PostgresRepository) RevokeBadge(ctx context.Context, badgeID uuid.UUID) error {
+	query := `UPDATE badges SET is_revoked = TRUE WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, badgeID)
+	return err
+}

@@ -15,11 +15,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/hibiken/asynq"
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 	"github.com/mooc-platform/backend/internal/config"
 	"github.com/mooc-platform/backend/internal/course"
 	"github.com/mooc-platform/backend/internal/learning"
 	"github.com/mooc-platform/backend/internal/media"
+	internalMw "github.com/mooc-platform/backend/internal/middleware"
 	"github.com/mooc-platform/backend/internal/user"
 )
 
@@ -87,6 +90,18 @@ func main() {
 		log.Fatalf("Error ejecutando migraciones: %v", err)
 	}
 
+	// Conectar a Redis
+	rdb := redis.NewClient(&redis.Options{
+		Addr: cfg.RedisAddr,
+	})
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		log.Printf("[WARNING] No se pudo hacer ping a Redis (%s): %v", cfg.RedisAddr, err)
+	}
+
+	// Cliente Asynq para encolar tareas asíncronas
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
+	defer asynqClient.Close()
+
 	// Inicializar Servicio de Almacenamiento MinIO/S3
 	storageService, err := media.NewStorageService(cfg)
 	if err != nil {
@@ -107,20 +122,26 @@ func main() {
 	courseUC := course.NewUseCase(courseRepo, userRepo)
 	courseHandler := course.NewHTTPHandler(courseUC)
 
-	mediaHandler := media.NewHTTPHandler(storageService)
-
 	learningRepo := learning.NewPostgresRepository(db)
 	learningUC := learning.NewUseCase(learningRepo, courseRepo, userRepo, fmt.Sprintf("http://localhost:%s", cfg.Port))
 	learningHandler := learning.NewHTTPHandler(learningUC)
+
+	mediaHandler := media.NewHTTPHandler(storageService, courseRepo, learningRepo, asynqClient)
+
+	authMw := internalMw.NewAuthMiddleware(userRepo)
+	rateLimiter := internalMw.NewRateLimiter(rdb, 100, 1*time.Minute)
 
 	// Router Chi
 	r := chi.NewRouter()
 
 	// Middlewares globales
+	r.Use(internalMw.SecurityHeaders)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(internalMw.Idempotency(rdb))
+	r.Use(authMw.Authenticate)
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
@@ -131,6 +152,11 @@ func main() {
 		MaxAge:           300,
 	}))
 
+	// Rate limiter aplicado a autenticación
+	r.With(rateLimiter.Middleware).Group(func(r chi.Router) {
+		userHandler.RegisterRoutes(r)
+	})
+
 	// Endpoint Healthcheck
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -138,8 +164,7 @@ func main() {
 		w.Write([]byte(`{"status":"ok", "timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
 	})
 
-	// Registrar TODAS las rutas de los dominios
-	userHandler.RegisterRoutes(r)
+	// Registrar rutas de dominios
 	courseHandler.RegisterRoutes(r)
 	if storageService != nil {
 		mediaHandler.RegisterRoutes(r)

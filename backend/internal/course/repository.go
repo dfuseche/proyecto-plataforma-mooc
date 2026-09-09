@@ -164,6 +164,27 @@ func (r *PostgresRepository) GetVersionByID(ctx context.Context, versionID uuid.
 	return &v, nil
 }
 
+func (r *PostgresRepository) GetLatestDraftVersion(ctx context.Context, courseID uuid.UUID) (*domain.CourseVersion, error) {
+	query := `
+		SELECT id, course_id, version_number, status, passing_score, created_at, published_at
+		FROM course_versions WHERE course_id = $1 AND status = 'draft'
+		ORDER BY version_number DESC LIMIT 1
+	`
+	var v domain.CourseVersion
+	var statusStr string
+	err := r.db.QueryRowContext(ctx, query, courseID).Scan(
+		&v.ID, &v.CourseID, &v.VersionNumber, &statusStr, &v.PassingScore, &v.CreatedAt, &v.PublishedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrVersionNotFound
+		}
+		return nil, err
+	}
+	v.Status = domain.VersionStatus(statusStr)
+	return &v, nil
+}
+
 func (r *PostgresRepository) GetFullVersionHierarchy(ctx context.Context, versionID uuid.UUID) (*domain.CourseVersion, error) {
 	v, err := r.GetVersionByID(ctx, versionID)
 	if err != nil {
@@ -251,21 +272,23 @@ func (r *PostgresRepository) PublishVersion(ctx context.Context, courseID uuid.U
 	defer tx.Rollback()
 
 	now := time.Now()
-	updateVersionQuery := `
-		UPDATE course_versions SET status = 'published', published_at = $1 WHERE id = $2
-	`
+	updateVersionQuery := `UPDATE course_versions SET status = 'published', published_at = $1 WHERE id = $2`
 	if _, err := tx.ExecContext(ctx, updateVersionQuery, now, versionID); err != nil {
 		return err
 	}
 
-	updateCourseQuery := `
-		UPDATE courses SET current_published_version_id = $1, updated_at = $2 WHERE id = $3
-	`
+	updateCourseQuery := `UPDATE courses SET current_published_version_id = $1, updated_at = $2 WHERE id = $3`
 	if _, err := tx.ExecContext(ctx, updateCourseQuery, versionID, now, courseID); err != nil {
 		return err
 	}
 
 	return tx.Commit()
+}
+
+func (r *PostgresRepository) UnpublishCourse(ctx context.Context, courseID uuid.UUID) error {
+	query := `UPDATE courses SET current_published_version_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, courseID)
+	return err
 }
 
 func (r *PostgresRepository) CreateModule(ctx context.Context, m *domain.Module) error {
@@ -324,6 +347,28 @@ func (r *PostgresRepository) CreateResource(ctx context.Context, res *domain.Res
 	return err
 }
 
+func (r *PostgresRepository) GetResourceByID(ctx context.Context, resourceID uuid.UUID) (*domain.Resource, error) {
+	query := `
+		SELECT id, unit_id, stable_id, title, type, canonical_markdown, media_url, is_visible, is_mandatory, is_downloadable, position, processing_status, created_at, updated_at
+		FROM course_resources WHERE id = $1
+	`
+	var res domain.Resource
+	var typeStr, procStr string
+	err := r.db.QueryRowContext(ctx, query, resourceID).Scan(
+		&res.ID, &res.UnitID, &res.StableID, &res.Title, &typeStr, &res.CanonicalMarkdown, &res.MediaURL,
+		&res.IsVisible, &res.IsMandatory, &res.IsDownloadable, &res.Position, &procStr, &res.CreatedAt, &res.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrResourceNotFound
+		}
+		return nil, err
+	}
+	res.Type = domain.ResourceType(typeStr)
+	res.ProcessingStatus = domain.ProcessingStatus(procStr)
+	return &res, nil
+}
+
 func (r *PostgresRepository) UpdateResource(ctx context.Context, res *domain.Resource) error {
 	query := `
 		UPDATE course_resources
@@ -335,4 +380,58 @@ func (r *PostgresRepository) UpdateResource(ctx context.Context, res *domain.Res
 		res.Title, res.CanonicalMarkdown, res.MediaURL, res.IsVisible, res.IsMandatory, res.IsDownloadable, res.Position, string(res.ProcessingStatus), res.UpdatedAt, res.ID,
 	)
 	return err
+}
+
+func (r *PostgresRepository) DeleteResource(ctx context.Context, resourceID uuid.UUID) error {
+	query := `DELETE FROM course_resources WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, resourceID)
+	return err
+}
+
+func (r *PostgresRepository) ReorderModules(ctx context.Context, versionID uuid.UUID, orderedIDs []uuid.UUID) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `UPDATE course_modules SET position = $1 WHERE id = $2 AND version_id = $3`
+	for pos, id := range orderedIDs {
+		if _, err := tx.ExecContext(ctx, query, pos+1, id, versionID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (r *PostgresRepository) ReorderUnits(ctx context.Context, moduleID uuid.UUID, orderedIDs []uuid.UUID) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `UPDATE course_units SET position = $1 WHERE id = $2 AND module_id = $3`
+	for pos, id := range orderedIDs {
+		if _, err := tx.ExecContext(ctx, query, pos+1, id, moduleID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (r *PostgresRepository) ReorderResources(ctx context.Context, unitID uuid.UUID, orderedIDs []uuid.UUID) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `UPDATE course_resources SET position = $1 WHERE id = $2 AND unit_id = $3`
+	for pos, id := range orderedIDs {
+		if _, err := tx.ExecContext(ctx, query, pos+1, id, unitID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }

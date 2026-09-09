@@ -133,6 +133,17 @@ func (m *mockE2ERepo) GetStudentBadgeForCourse(ctx context.Context, sid, cid uui
 	if !ok { return nil, domain.ErrCourseNotFound }
 	return b, nil
 }
+func (m *mockE2ERepo) GetBadgeByID(ctx context.Context, badgeID uuid.UUID) (*domain.Badge, error) { return nil, nil }
+func (m *mockE2ERepo) RevokeBadge(ctx context.Context, badgeID uuid.UUID) error { return nil }
+func (m *mockE2ERepo) ListUsers(ctx context.Context, role *domain.Role, status *domain.UserStatus, search string, limit, offset int) ([]*domain.User, int, error) { return nil, 0, nil }
+func (m *mockE2ERepo) ListAuditLogs(ctx context.Context, limit, offset int) ([]*domain.AuditLog, int, error) { return nil, 0, nil }
+func (m *mockE2ERepo) GetResourceByID(ctx context.Context, resourceID uuid.UUID) (*domain.Resource, error) { return nil, nil }
+func (m *mockE2ERepo) DeleteResource(ctx context.Context, resourceID uuid.UUID) error { return nil }
+func (m *mockE2ERepo) UnpublishCourse(ctx context.Context, courseID uuid.UUID) error { return nil }
+func (m *mockE2ERepo) GetLatestDraftVersion(ctx context.Context, courseID uuid.UUID) (*domain.CourseVersion, error) { return nil, nil }
+func (m *mockE2ERepo) ReorderModules(ctx context.Context, versionID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
+func (m *mockE2ERepo) ReorderUnits(ctx context.Context, moduleID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
+func (m *mockE2ERepo) ReorderResources(ctx context.Context, unitID uuid.UUID, orderedIDs []uuid.UUID) error { return nil }
 
 func TestE2ECriticalFlowsSuite(t *testing.T) {
 	repo := newMockE2ERepo()

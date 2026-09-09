@@ -1,0 +1,433 @@
+openapi: 3.1.0
+info:
+  title: API Plataforma Web MOOC Académica
+  description: Backend monolito modular en Go para la plataforma de cursos masivos abiertos en línea.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081
+    description: Entorno Docker Local
+paths:
+  /health:
+    get:
+      summary: Healthcheck de la API
+      responses:
+        '200':
+          description: API en funcionamiento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/v1/auth/register:
+    post:
+      summary: Registrar nuevo estudiante
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                full_name:
+                  type: string
+      responses:
+        '200':
+          description: Estudiante registrado exitosamente
+
+  /api/v1/auth/verify-email:
+    post:
+      summary: Verificar correo electrónico con token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Correo verificado exitosamente
+
+  /api/v1/auth/login:
+    post:
+      summary: Inicio de sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Autenticación exitosa con token Bearer retornado
+
+  /api/v1/auth/logout:
+    post:
+      summary: Cierre de sesión y revocación de token
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sesión cerrada exitosamente
+
+  /api/v1/auth/forgot-password:
+    post:
+      summary: Solicitar restablecimiento de contraseña
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Instrucciones enviadas si el usuario existe
+
+  /api/v1/auth/reset-password:
+    post:
+      summary: Restablecer contraseña con token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          description: Contraseña actualizada exitosamente
+
+  /api/v1/admin/users:
+    get:
+      summary: Listar usuarios (Solo Admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista paginada de usuarios
+
+  /api/v1/admin/teachers:
+    post:
+      summary: Crear nuevo profesor (Solo Admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                full_name:
+                  type: string
+      responses:
+        '200':
+          description: Profesor creado exitosamente
+
+  /api/v1/admin/users/{id}/status:
+    patch:
+      summary: Cambiar estado de usuario (Solo Admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, suspended, unverified]
+      responses:
+        '200':
+          description: Estado de usuario actualizado
+
+  /api/v1/admin/audit-logs:
+    get:
+      summary: Consultar registros de auditoría (Solo Admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Registros de auditoría paginados
+
+  /api/v1/admin/badges/{badgeId}/revoke:
+    post:
+      summary: Revocar una insignia emitida (Solo Admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: badgeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Insignia revocada exitosamente
+
+  /api/v1/courses:
+    get:
+      summary: Listar catálogo público de cursos
+      responses:
+        '200':
+          description: Lista de cursos disponibles
+    post:
+      summary: Crear nuevo curso (Profesor / Admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, summary, passing_score]
+              properties:
+                title:
+                  type: string
+                summary:
+                  type: string
+                passing_score:
+                  type: number
+      responses:
+        '200':
+          description: Curso y versión borrador inicial creados
+
+  /api/v1/courses/{id}:
+    get:
+      summary: Obtener jerarquía del curso publicado
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Estructura del curso publicado
+
+  /api/v1/courses/{id}/unpublish:
+    post:
+      summary: Despublicar un curso para mantenimiento (Profesor autor / Admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Curso despublicado exitosamente
+
+  /api/v1/courses/{id}/create-draft:
+    post:
+      summary: Crear borrador de actualización a partir de versión publicada
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Nuevo borrador creado preservando IDs estables
+
+  /api/v1/media/presigned-upload:
+    post:
+      summary: Generar URL prefirmada para carga S3
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [object_key, content_type]
+              properties:
+                object_key:
+                  type: string
+                content_type:
+                  type: string
+      responses:
+        '200':
+          description: URL PUT prefirmada S3 retornada
+
+  /api/v1/media/resources/{resourceId}/complete-upload:
+    post:
+      summary: Notificar finalización de carga y encolar transcodificación
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [object_key]
+              properties:
+                object_key:
+                  type: string
+      responses:
+        '200':
+          description: Carga validada y worker asíncrono encolado
+
+  /api/v1/learning/enrollments:
+    post:
+      summary: Inscribir estudiante a un curso
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [course_id]
+              properties:
+                course_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Inscripción realizada exitosamente
+
+  /api/v1/learning/heartbeat:
+    post:
+      summary: Enviar pulso de reproducción y permanencia
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [course_id, resource_stable_id, dwell_time_seconds]
+              properties:
+                course_id:
+                  type: string
+                  format: uuid
+                resource_stable_id:
+                  type: string
+                  format: uuid
+                dwell_time_seconds:
+                  type: integer
+                last_position_seconds:
+                  type: integer
+      responses:
+        '200':
+          description: Progreso actualizado en servidor
+
+  /api/v1/badges/verify/{code}:
+    get:
+      summary: Verificar autenticidad pública de una insignia
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalles e integridad de la insignia
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Bearer

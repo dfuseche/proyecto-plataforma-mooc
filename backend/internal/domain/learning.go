@@ -147,6 +147,8 @@ type LearningRepository interface {
 	GetStudentCourseProgress(ctx context.Context, studentID, courseID uuid.UUID) ([]*ResourceProgress, error)
 
 	CreateBadge(ctx context.Context, badge *Badge) error
+	GetBadgeByID(ctx context.Context, badgeID uuid.UUID) (*Badge, error)
 	GetBadgeByCode(ctx context.Context, code uuid.UUID) (*Badge, error)
 	GetStudentBadgeForCourse(ctx context.Context, studentID, courseID uuid.UUID) (*Badge, error)
+	RevokeBadge(ctx context.Context, badgeID uuid.UUID) error
 }

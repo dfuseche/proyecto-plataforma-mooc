@@ -1,0 +1,65 @@
+name: Backend CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: mooc_user
+          POSTGRES_PASSWORD: mooc_password
+          POSTGRES_DB: mooc_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: Verify Dependencies
+        run: |
+          cd backend
+          go mod verify
+
+      - name: Run Go Build
+        run: |
+          cd backend
+          go build ./...
+
+      - name: Run Go Unit & Integration Tests
+        env:
+          DATABASE_URL: postgres://mooc_user:mooc_password@localhost:5432/mooc_db?sslmode=disable
+          REDIS_ADDR: localhost:6379
+        run: |
+          cd backend
+          go test -v ./...
