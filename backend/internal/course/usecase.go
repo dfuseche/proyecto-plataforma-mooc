@@ -189,6 +189,33 @@ func (uc *UseCase) AddResource(ctx context.Context, teacherID uuid.UUID, resourc
 }
 
 func (uc *UseCase) UpdateResource(ctx context.Context, teacherID uuid.UUID, resource *domain.Resource) (*domain.Resource, error) {
+	existing, err := uc.repo.GetResourceByID(ctx, resource.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if resource.Title == "" {
+		resource.Title = existing.Title
+	}
+	if resource.Type == "" {
+		resource.Type = existing.Type
+	}
+	if resource.CanonicalMarkdown == "" {
+		resource.CanonicalMarkdown = existing.CanonicalMarkdown
+	}
+	if resource.MediaURL == "" {
+		resource.MediaURL = existing.MediaURL
+	}
+	if resource.Position == 0 {
+		resource.Position = existing.Position
+	}
+	if resource.ProcessingStatus == "" {
+		resource.ProcessingStatus = existing.ProcessingStatus
+	}
+	resource.UnitID = existing.UnitID
+	resource.StableID = existing.StableID
+	resource.CreatedAt = existing.CreatedAt
+
 	if err := uc.repo.UpdateResource(ctx, resource); err != nil {
 		return nil, err
 	}

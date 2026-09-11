@@ -23,6 +23,7 @@ RUN apk add --no-cache ca-certificates ffmpeg curl
 COPY --from=builder /app/api /app/api
 COPY --from=builder /app/worker /app/worker
 COPY --from=builder /app/migrations /app/migrations
+COPY --from=builder /app/docs /app/docs
 
 EXPOSE 8080
 

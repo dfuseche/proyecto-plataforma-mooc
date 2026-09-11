@@ -6,12 +6,27 @@ info:
 servers:
   - url: http://localhost:8081
     description: Entorno Docker Local
+tags:
+  - name: Health
+    description: Estado y disponibilidad de la API
+  - name: Auth
+    description: Registro, autenticación y recuperación de acceso
+  - name: Users & Admin
+    description: Gestión administrativa de usuarios, profesores, auditoría e insignias
+  - name: Courses
+    description: Catálogo y publicación de cursos
+  - name: Media
+    description: Carga y procesamiento de recursos multimedia
+  - name: Learning
+    description: Inscripciones y seguimiento del aprendizaje
+  - name: Badges
+    description: Verificación pública de insignias
 paths:
   /health:
     get:
       summary: Healthcheck de la API
       responses:
-        '200':
+        "200":
           description: API en funcionamiento
           content:
             application/json:
@@ -24,6 +39,7 @@ paths:
                   timestamp:
                     type: string
                     format: date-time
+      tags: [Health]
 
   /api/v1/auth/register:
     post:
@@ -44,8 +60,9 @@ paths:
                 full_name:
                   type: string
       responses:
-        '200':
+        "200":
           description: Estudiante registrado exitosamente
+      tags: [Auth]
 
   /api/v1/auth/verify-email:
     post:
@@ -61,8 +78,9 @@ paths:
                 token:
                   type: string
       responses:
-        '200':
+        "200":
           description: Correo verificado exitosamente
+      tags: [Auth]
 
   /api/v1/auth/login:
     post:
@@ -81,8 +99,9 @@ paths:
                 password:
                   type: string
       responses:
-        '200':
+        "200":
           description: Autenticación exitosa con token Bearer retornado
+      tags: [Auth]
 
   /api/v1/auth/logout:
     post:
@@ -90,8 +109,9 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '200':
+        "200":
           description: Sesión cerrada exitosamente
+      tags: [Auth]
 
   /api/v1/auth/forgot-password:
     post:
@@ -107,8 +127,9 @@ paths:
                 email:
                   type: string
       responses:
-        '200':
+        "200":
           description: Instrucciones enviadas si el usuario existe
+      tags: [Auth]
 
   /api/v1/auth/reset-password:
     post:
@@ -126,8 +147,9 @@ paths:
                 new_password:
                   type: string
       responses:
-        '200':
+        "200":
           description: Contraseña actualizada exitosamente
+      tags: [Auth]
 
   /api/v1/admin/users:
     get:
@@ -156,8 +178,9 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Lista paginada de usuarios
+      tags: [Users & Admin]
 
   /api/v1/admin/teachers:
     post:
@@ -179,8 +202,9 @@ paths:
                 full_name:
                   type: string
       responses:
-        '200':
+        "200":
           description: Profesor creado exitosamente
+      tags: [Users & Admin]
 
   /api/v1/admin/users/{id}/status:
     patch:
@@ -206,8 +230,9 @@ paths:
                   type: string
                   enum: [active, suspended, unverified]
       responses:
-        '200':
+        "200":
           description: Estado de usuario actualizado
+      tags: [Users & Admin]
 
   /api/v1/admin/audit-logs:
     get:
@@ -224,8 +249,9 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Registros de auditoría paginados
+      tags: [Users & Admin]
 
   /api/v1/admin/badges/{badgeId}/revoke:
     post:
@@ -240,14 +266,16 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Insignia revocada exitosamente
+      tags: [Users & Admin]
 
   /api/v1/courses:
     get:
+      tags: [Courses]
       summary: Listar catálogo público de cursos
       responses:
-        '200':
+        "200":
           description: Lista de cursos disponibles
     post:
       summary: Crear nuevo curso (Profesor / Admin)
@@ -268,8 +296,9 @@ paths:
                 passing_score:
                   type: number
       responses:
-        '200':
+        "200":
           description: Curso y versión borrador inicial creados
+      tags: [Courses]
 
   /api/v1/courses/{id}:
     get:
@@ -282,8 +311,9 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Estructura del curso publicado
+      tags: [Courses]
 
   /api/v1/courses/{id}/unpublish:
     post:
@@ -298,8 +328,9 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Curso despublicado exitosamente
+      tags: [Courses]
 
   /api/v1/courses/{id}/create-draft:
     post:
@@ -314,8 +345,9 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Nuevo borrador creado preservando IDs estables
+      tags: [Courses]
 
   /api/v1/media/presigned-upload:
     post:
@@ -335,8 +367,9 @@ paths:
                 content_type:
                   type: string
       responses:
-        '200':
+        "200":
           description: URL PUT prefirmada S3 retornada
+      tags: [Media]
 
   /api/v1/media/resources/{resourceId}/complete-upload:
     post:
@@ -361,8 +394,9 @@ paths:
                 object_key:
                   type: string
       responses:
-        '200':
+        "200":
           description: Carga validada y worker asíncrono encolado
+      tags: [Media]
 
   /api/v1/learning/enrollments:
     post:
@@ -381,8 +415,9 @@ paths:
                   type: string
                   format: uuid
       responses:
-        '200':
+        "200":
           description: Inscripción realizada exitosamente
+      tags: [Learning]
 
   /api/v1/learning/heartbeat:
     post:
@@ -408,8 +443,9 @@ paths:
                 last_position_seconds:
                   type: integer
       responses:
-        '200':
+        "200":
           description: Progreso actualizado en servidor
+      tags: [Learning]
 
   /api/v1/badges/verify/{code}:
     get:
@@ -422,8 +458,9 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Detalles e integridad de la insignia
+      tags: [Badges]
 
 components:
   securitySchemes:
