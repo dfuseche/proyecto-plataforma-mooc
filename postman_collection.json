@@ -85,6 +85,16 @@
 			"key": "badgeId",
 			"value": "",
 			"type": "string"
+		},
+		{
+			"key": "objectKey",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "presignedUploadUrl",
+			"value": "",
+			"type": "string"
 		}
 	],
 	"item": [
@@ -558,6 +568,12 @@
 									"var jsonData = pm.response.json();",
 									"if (jsonData.success) {",
 									"    pm.collectionVariables.set('resourceId', jsonData.data.id);",
+									"    if (jsonData.data.object_key) {",
+									"        pm.collectionVariables.set('objectKey', jsonData.data.object_key);",
+									"    }",
+									"    if (jsonData.data.presigned_upload_url) {",
+									"        pm.collectionVariables.set('presignedUploadUrl', jsonData.data.presigned_upload_url);",
+									"    }",
 									"}"
 								],
 								"type": "text/javascript"
@@ -706,6 +722,21 @@
 			"item": [
 				{
 					"name": "03.1 - Generar URL Prefirmada Carga S3",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success) {",
+									"    pm.collectionVariables.set('presignedUploadUrl', jsonData.data.upload_url);",
+									"    pm.collectionVariables.set('objectKey', jsonData.data.object_key);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -746,7 +777,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"object_key\": \"cursos/video-introduccion.mp4\"\n}"
+							"raw": "{\n  \"object_key\": \"{{objectKey}}\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/media/resources/{{resourceId}}/complete-upload",

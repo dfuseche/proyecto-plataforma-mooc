@@ -62,6 +62,19 @@ func (uc *UseCase) CreateQuiz(ctx context.Context, teacherID uuid.UUID, quiz *do
 		quiz.PassingScore = 70.0
 	}
 
+	for i := range quiz.Questions {
+		if quiz.Questions[i].ID == uuid.Nil {
+			quiz.Questions[i].ID = uuid.New()
+		}
+		quiz.Questions[i].QuizID = quiz.ID
+		for j := range quiz.Questions[i].Options {
+			if quiz.Questions[i].Options[j].ID == uuid.Nil {
+				quiz.Questions[i].Options[j].ID = uuid.New()
+			}
+			quiz.Questions[i].Options[j].QuestionID = quiz.Questions[i].ID
+		}
+	}
+
 	if err := uc.repo.CreateQuiz(ctx, quiz); err != nil {
 		return nil, err
 	}
@@ -126,12 +139,17 @@ func (uc *UseCase) StartQuizAttempt(ctx context.Context, studentID, quizID uuid.
 		return nil, err
 	}
 
-	attemptsCount, err := uc.repo.GetStudentAttemptsCount(ctx, studentID, quizID)
+	activeAttempt, err := uc.repo.GetActiveAttempt(ctx, studentID, quizID)
+	if err == nil && activeAttempt != nil {
+		return activeAttempt, nil
+	}
+
+	submittedCount, err := uc.repo.GetStudentSubmittedAttemptsCount(ctx, studentID, quizID)
 	if err != nil {
 		return nil, err
 	}
 
-	if attemptsCount >= quiz.MaxAttempts {
+	if submittedCount >= quiz.MaxAttempts {
 		return nil, domain.ErrMaxAttemptsReached
 	}
 
@@ -139,7 +157,7 @@ func (uc *UseCase) StartQuizAttempt(ctx context.Context, studentID, quizID uuid.
 		ID:            uuid.New(),
 		StudentID:     studentID,
 		QuizID:        quizID,
-		AttemptNumber: attemptsCount + 1,
+		AttemptNumber: submittedCount + 1,
 		Status:        domain.AttemptInProgress,
 		Answers:       make(map[string]string),
 	}
@@ -165,6 +183,10 @@ func (uc *UseCase) SavePartialAttempt(ctx context.Context, studentID, attemptID 
 		return nil, domain.ErrAttemptAlreadySubmitted
 	}
 
+	if attempt.Answers == nil {
+		attempt.Answers = make(map[string]string)
+	}
+
 	for k, v := range answers {
 		attempt.Answers[k] = v
 	}
@@ -176,19 +198,59 @@ func (uc *UseCase) SavePartialAttempt(ctx context.Context, studentID, attemptID 
 	return attempt, nil
 }
 
-func (uc *UseCase) SubmitQuizAttempt(ctx context.Context, studentID, quizID uuid.UUID, answers map[string]string) (*domain.QuizAttempt, error) {
+func (uc *UseCase) SubmitQuizAttempt(ctx context.Context, studentID, quizID uuid.UUID, attemptID *uuid.UUID, answers map[string]string) (*domain.QuizAttempt, error) {
+	var attempt *domain.QuizAttempt
+
+	if attemptID != nil && *attemptID != uuid.Nil {
+		att, err := uc.repo.GetAttemptByID(ctx, *attemptID)
+		if err != nil {
+			return nil, err
+		}
+		if att.StudentID != studentID {
+			return nil, domain.ErrForbidden
+		}
+		if att.Status == domain.AttemptSubmitted {
+			return nil, domain.ErrAttemptAlreadySubmitted
+		}
+		attempt = att
+		quizID = att.QuizID
+	}
+
 	quiz, err := uc.repo.GetQuizWithAnswers(ctx, quizID)
 	if err != nil {
 		return nil, err
 	}
 
-	attemptsCount, err := uc.repo.GetStudentAttemptsCount(ctx, studentID, quizID)
+	if attempt == nil {
+		att, err := uc.repo.GetActiveAttempt(ctx, studentID, quizID)
+		if err == nil && att != nil {
+			attempt = att
+		}
+	}
+
+	submittedCount, err := uc.repo.GetStudentSubmittedAttemptsCount(ctx, studentID, quizID)
 	if err != nil {
 		return nil, err
 	}
 
-	if attemptsCount >= quiz.MaxAttempts {
-		return nil, domain.ErrMaxAttemptsReached
+	if attempt == nil {
+		if submittedCount >= quiz.MaxAttempts {
+			return nil, domain.ErrMaxAttemptsReached
+		}
+		attempt = &domain.QuizAttempt{
+			ID:            uuid.New(),
+			StudentID:     studentID,
+			QuizID:        quizID,
+			AttemptNumber: submittedCount + 1,
+			Answers:       make(map[string]string),
+		}
+	}
+
+	if attempt.Answers == nil {
+		attempt.Answers = make(map[string]string)
+	}
+	for k, v := range answers {
+		attempt.Answers[k] = v
 	}
 
 	var totalPoints float64 = 0
@@ -197,7 +259,7 @@ func (uc *UseCase) SubmitQuizAttempt(ctx context.Context, studentID, quizID uuid
 	for _, quest := range quiz.Questions {
 		totalPoints += quest.Points
 
-		selectedOptionIDStr, answered := answers[quest.ID.String()]
+		selectedOptionIDStr, answered := attempt.Answers[quest.ID.String()]
 		if !answered {
 			continue
 		}
@@ -221,19 +283,14 @@ func (uc *UseCase) SubmitQuizAttempt(ctx context.Context, studentID, quizID uuid
 	}
 
 	now := time.Now()
-	attempt := &domain.QuizAttempt{
-		ID:            uuid.New(),
-		StudentID:     studentID,
-		QuizID:        quizID,
-		AttemptNumber: attemptsCount + 1,
-		Status:        domain.AttemptSubmitted,
-		Score:         &score,
-		Answers:       answers,
-		SubmittedAt:   &now,
-	}
+	attempt.Status = domain.AttemptSubmitted
+	attempt.Score = &score
+	attempt.SubmittedAt = &now
 
-	if err := uc.repo.CreateQuizAttempt(ctx, attempt); err != nil {
-		return nil, err
+	if err := uc.repo.UpdateQuizAttempt(ctx, attempt); err != nil {
+		if err := uc.repo.CreateQuizAttempt(ctx, attempt); err != nil {
+			return nil, err
+		}
 	}
 
 	return attempt, nil

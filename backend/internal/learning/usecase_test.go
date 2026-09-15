@@ -138,6 +138,25 @@ func (m *mockLearningRepo) GetStudentBadgeForCourse(ctx context.Context, student
 	return b, nil
 }
 
+func (m *mockLearningRepo) GetActiveAttempt(ctx context.Context, studentID, quizID uuid.UUID) (*domain.QuizAttempt, error) {
+	for _, a := range m.attempts {
+		if a.StudentID == studentID && a.QuizID == quizID && a.Status == domain.AttemptInProgress {
+			return a, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockLearningRepo) GetStudentSubmittedAttemptsCount(ctx context.Context, studentID, quizID uuid.UUID) (int, error) {
+	count := 0
+	for _, a := range m.attempts {
+		if a.StudentID == studentID && a.QuizID == quizID && a.Status == domain.AttemptSubmitted {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (m *mockLearningRepo) GetBadgeByID(ctx context.Context, badgeID uuid.UUID) (*domain.Badge, error) {
 	for _, b := range m.badges {
 		if b.ID == badgeID {
@@ -232,7 +251,7 @@ func TestServerSideQuizGrading(t *testing.T) {
 	studentID := uuid.New()
 
 	// 1. Envío con respuesta correcta
-	attempt1, err := uc.SubmitQuizAttempt(ctx, studentID, qID, map[string]string{
+	attempt1, err := uc.SubmitQuizAttempt(ctx, studentID, qID, nil, map[string]string{
 		q1ID.String(): q1OptCorrect.String(),
 	})
 	if err != nil {
@@ -243,7 +262,7 @@ func TestServerSideQuizGrading(t *testing.T) {
 	}
 
 	// 2. Envío con respuesta incorrecta
-	attempt2, err := uc.SubmitQuizAttempt(ctx, studentID, qID, map[string]string{
+	attempt2, err := uc.SubmitQuizAttempt(ctx, studentID, qID, nil, map[string]string{
 		q1ID.String(): q1OptWrong.String(),
 	})
 	if err != nil {
@@ -254,7 +273,7 @@ func TestServerSideQuizGrading(t *testing.T) {
 	}
 
 	// 3. Superar el número máximo de intentos (debe fallar)
-	_, err = uc.SubmitQuizAttempt(ctx, studentID, qID, map[string]string{
+	_, err = uc.SubmitQuizAttempt(ctx, studentID, qID, nil, map[string]string{
 		q1ID.String(): q1OptCorrect.String(),
 	})
 	if err != domain.ErrMaxAttemptsReached {
@@ -309,10 +328,10 @@ func TestHeartbeatProgressAndBadgeIssuance(t *testing.T) {
 	}
 
 	if enrollment.ProgressPercentage != 100.0 {
-		t.Errorf("Esperaba 100%% de progreso, obtenido: %.2f%%", enrollment.ProgressPercentage)
+		t.Errorf("Esperaba avance 100%%, obtenido: %.2f", enrollment.ProgressPercentage)
 	}
 	if enrollment.AcademicStatus != domain.AcademicApproved {
-		t.Errorf("Esperaba estado AcademicApproved, obtenido: %s", enrollment.AcademicStatus)
+		t.Errorf("Esperaba estado de aprobación, obtenido: %s", enrollment.AcademicStatus)
 	}
 
 	// Verificar emisión de insignia idempotente
@@ -322,5 +341,111 @@ func TestHeartbeatProgressAndBadgeIssuance(t *testing.T) {
 	}
 	if badge.VerificationURL == "" {
 		t.Error("Esperaba URL pública de verificación de la insignia")
+	}
+}
+
+func TestFullQuizLifecycle(t *testing.T) {
+	lRepo := newMockLearningRepo()
+	cRepo := &mockCourseRepo{}
+	uRepo := &mockUserRepo{}
+	uc := NewUseCase(lRepo, cRepo, uRepo, "http://localhost:8080")
+	ctx := context.Background()
+
+	resourceID := uuid.New()
+	teacherID := uuid.New()
+	studentID := uuid.New()
+
+	// 1. Crear Quiz
+	quizInput := &domain.Quiz{
+		ResourceID:   resourceID,
+		MaxAttempts:  1,
+		PassingScore: 70.0,
+		Questions: []domain.QuizQuestion{
+			{
+				QuestionText: "¿Qué es Go?",
+				Position:     1,
+				Points:       100.0,
+				Options: []domain.QuizOption{
+					{OptionText: "Un lenguaje de programación", IsCorrect: true, Position: 1},
+					{OptionText: "Un motor de base de datos", IsCorrect: false, Position: 2},
+				},
+			},
+		},
+	}
+
+	createdQuiz, err := uc.CreateQuiz(ctx, teacherID, quizInput)
+	if err != nil {
+		t.Fatalf("CreateQuiz falló: %v", err)
+	}
+
+	if createdQuiz.ID == uuid.Nil {
+		t.Fatal("Quiz ID no debería ser Nil")
+	}
+	if len(createdQuiz.Questions) != 1 || createdQuiz.Questions[0].ID == uuid.Nil {
+		t.Fatal("Question ID no debería ser Nil tras CreateQuiz")
+	}
+	optCorrect := createdQuiz.Questions[0].Options[0]
+	if optCorrect.ID == uuid.Nil {
+		t.Fatal("Option ID no debería ser Nil tras CreateQuiz")
+	}
+	if !optCorrect.IsCorrect {
+		t.Fatal("Option IsCorrect debería ser true tras unmarshaling/creación")
+	}
+
+	// 2. Obtener Snapshot Seguro
+	snapshot, err := uc.GetQuizSnapshot(ctx, createdQuiz.ID)
+	if err != nil {
+		t.Fatalf("GetQuizSnapshot falló: %v", err)
+	}
+	if len(snapshot.Questions) != 1 {
+		t.Fatalf("Snapshot debería contener 1 pregunta")
+	}
+
+	// 3. Iniciar Intento
+	attempt, err := uc.StartQuizAttempt(ctx, studentID, createdQuiz.ID)
+	if err != nil {
+		t.Fatalf("StartQuizAttempt falló: %v", err)
+	}
+	if attempt.Status != domain.AttemptInProgress {
+		t.Fatalf("El estado del intento debería ser in_progress, obtenido: %s", attempt.Status)
+	}
+
+	// 4. Iniciar Intento de nuevo (debería retornar el mismo intento activo sin fallar)
+	activeAtt, err := uc.StartQuizAttempt(ctx, studentID, createdQuiz.ID)
+	if err != nil {
+		t.Fatalf("Re-StartQuizAttempt falló: %v", err)
+	}
+	if activeAtt.ID != attempt.ID {
+		t.Fatalf("Re-StartQuizAttempt debería retornar el mismo intento activo")
+	}
+
+	// 5. Guardar Avance Parcial
+	questionIDStr := createdQuiz.Questions[0].ID.String()
+	_, err = uc.SavePartialAttempt(ctx, studentID, attempt.ID, map[string]string{
+		questionIDStr: optCorrect.ID.String(),
+	})
+	if err != nil {
+		t.Fatalf("SavePartialAttempt falló: %v", err)
+	}
+
+	// 6. Enviar Intento para Calificación
+	submittedAttempt, err := uc.SubmitQuizAttempt(ctx, studentID, createdQuiz.ID, &attempt.ID, map[string]string{
+		questionIDStr: optCorrect.ID.String(),
+	})
+	if err != nil {
+		t.Fatalf("SubmitQuizAttempt falló: %v", err)
+	}
+
+	if submittedAttempt.Status != domain.AttemptSubmitted {
+		t.Fatalf("El estado del intento debería ser submitted")
+	}
+	if *submittedAttempt.Score != 100.0 {
+		t.Fatalf("Esperaba score 100.0, obtenido: %.2f", *submittedAttempt.Score)
+	}
+
+	// 7. Intentar nuevo intento tras alcanzar MaxAttempts (1)
+	_, err = uc.StartQuizAttempt(ctx, studentID, createdQuiz.ID)
+	if err != domain.ErrMaxAttemptsReached {
+		t.Fatalf("Esperaba ErrMaxAttemptsReached tras agotar intentos, obtenido: %v", err)
 	}
 }

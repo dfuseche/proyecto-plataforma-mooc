@@ -118,6 +118,8 @@ func (m *mockE2ERepo) GetQuizWithAnswers(ctx context.Context, qid uuid.UUID) (*d
 func (m *mockE2ERepo) CreateQuizAttempt(ctx context.Context, a *domain.QuizAttempt) error { return nil }
 func (m *mockE2ERepo) GetAttemptByID(ctx context.Context, aid uuid.UUID) (*domain.QuizAttempt, error) { return nil, nil }
 func (m *mockE2ERepo) GetStudentAttemptsCount(ctx context.Context, sid, qid uuid.UUID) (int, error) { return 0, nil }
+func (m *mockE2ERepo) GetStudentSubmittedAttemptsCount(ctx context.Context, sid, qid uuid.UUID) (int, error) { return 0, nil }
+func (m *mockE2ERepo) GetActiveAttempt(ctx context.Context, sid, qid uuid.UUID) (*domain.QuizAttempt, error) { return nil, nil }
 func (m *mockE2ERepo) UpdateQuizAttempt(ctx context.Context, a *domain.QuizAttempt) error { return nil }
 func (m *mockE2ERepo) UpsertResourceProgress(ctx context.Context, p *domain.ResourceProgress) error { return nil }
 func (m *mockE2ERepo) GetStudentCourseProgress(ctx context.Context, sid, cid uuid.UUID) ([]*domain.ResourceProgress, error) { return nil, nil }

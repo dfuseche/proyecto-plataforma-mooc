@@ -172,7 +172,7 @@ func main() {
 	}
 
 	courseRepo := course.NewPostgresRepository(db)
-	courseUC := course.NewUseCase(courseRepo, userRepo)
+	courseUC := course.NewUseCase(courseRepo, userRepo, storageService)
 	courseHandler := course.NewHTTPHandler(courseUC)
 
 	learningRepo := learning.NewPostgresRepository(db)

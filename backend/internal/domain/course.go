@@ -91,20 +91,22 @@ type Unit struct {
 }
 
 type Resource struct {
-	ID                uuid.UUID        `json:"id"`
-	UnitID            uuid.UUID        `json:"unit_id"`
-	StableID          uuid.UUID        `json:"stable_id"`
-	Title             string           `json:"title"`
-	Type              ResourceType     `json:"type"`
-	CanonicalMarkdown string           `json:"canonical_markdown,omitempty"`
-	MediaURL          string           `json:"media_url,omitempty"`
-	IsVisible         bool             `json:"is_visible"`
-	IsMandatory       bool             `json:"is_mandatory"`
-	IsDownloadable    bool             `json:"is_downloadable"`
-	Position          int              `json:"position"`
-	ProcessingStatus  ProcessingStatus `json:"processing_status"`
-	CreatedAt         time.Time        `json:"created_at"`
-	UpdatedAt         time.Time        `json:"updated_at"`
+	ID                 uuid.UUID        `json:"id"`
+	UnitID             uuid.UUID        `json:"unit_id"`
+	StableID           uuid.UUID        `json:"stable_id"`
+	Title              string           `json:"title"`
+	Type               ResourceType     `json:"type"`
+	CanonicalMarkdown  string           `json:"canonical_markdown,omitempty"`
+	MediaURL           string           `json:"media_url,omitempty"`
+	ObjectKey          string           `json:"object_key,omitempty"`
+	PresignedUploadURL string           `json:"presigned_upload_url,omitempty"`
+	IsVisible          bool             `json:"is_visible"`
+	IsMandatory        bool             `json:"is_mandatory"`
+	IsDownloadable     bool             `json:"is_downloadable"`
+	Position           int              `json:"position"`
+	ProcessingStatus   ProcessingStatus `json:"processing_status"`
+	CreatedAt          time.Time        `json:"created_at"`
+	UpdatedAt          time.Time        `json:"updated_at"`
 }
 
 type CourseRepository interface {

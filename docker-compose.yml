@@ -76,6 +76,7 @@ services:
       DATABASE_URL: "postgres://mooc_user:mooc_password@postgres:5432/mooc_db?sslmode=disable"
       REDIS_ADDR: "redis:6379"
       MINIO_ENDPOINT: "minio:9000"
+      EXTERNAL_MINIO_ENDPOINT: "http://localhost:9002"
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadminpassword"
       MINIO_SECURE: "false"

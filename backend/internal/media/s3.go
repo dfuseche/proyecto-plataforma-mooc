@@ -3,7 +3,10 @@ package media
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -18,9 +21,31 @@ type StorageService struct {
 }
 
 func NewStorageService(cfg *config.Config) (*StorageService, error) {
-	client, err := minio.New(cfg.MinIOEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.MinIOAccessKey, cfg.MinIOSecretKey, ""),
-		Secure: cfg.MinIOSecure,
+	endpointHost := cfg.MinIOEndpoint
+	if cfg.ExternalMinIOEndpoint != "" {
+		u, err := url.Parse(cfg.ExternalMinIOEndpoint)
+		if err == nil && u.Host != "" {
+			endpointHost = u.Host
+		}
+	}
+
+	dialTarget := cfg.MinIOEndpoint
+
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if strings.HasPrefix(addr, endpointHost) {
+				addr = dialTarget
+			}
+			var dialer net.Dialer
+			return dialer.DialContext(ctx, network, addr)
+		},
+	}
+
+	client, err := minio.New(endpointHost, &minio.Options{
+		Creds:     credentials.NewStaticV4(cfg.MinIOAccessKey, cfg.MinIOSecretKey, ""),
+		Secure:    cfg.MinIOSecure,
+		Transport: transport,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init MinIO client: %w", err)
@@ -58,6 +83,14 @@ func (s *StorageService) GeneratePresignedUploadURL(ctx context.Context, objectK
 		ObjectKey: objectKey,
 		ExpiresAt: time.Now().Add(expiry),
 	}, nil
+}
+
+func (s *StorageService) GeneratePresignedUpload(ctx context.Context, objectKey string, contentType string) (string, error) {
+	out, err := s.GeneratePresignedUploadURL(ctx, objectKey, contentType)
+	if err != nil {
+		return "", err
+	}
+	return out.UploadURL, nil
 }
 
 func (s *StorageService) GeneratePresignedDownloadURL(ctx context.Context, objectKey string, expiry time.Duration) (string, error) {

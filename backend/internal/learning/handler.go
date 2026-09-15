@@ -25,12 +25,11 @@ func (h *HTTPHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/quizzes/{quizId}/start-attempt", h.StartQuizAttempt)
 		r.Patch("/attempts/{attemptId}", h.SavePartialAttempt)
 		r.Post("/quizzes/{quizId}/attempts", h.SubmitQuizAttempt)
+		r.Post("/attempts/{attemptId}/submit", h.SubmitQuizAttempt)
 		r.Post("/heartbeat", h.RecordHeartbeat)
 	})
 
-	r.Route("/api/v1/courses/resources/{resourceId}/quiz", func(r chi.Router) {
-		r.Post("/", h.CreateQuiz)
-	})
+	r.Post("/api/v1/courses/resources/{resourceId}/quiz", h.CreateQuiz)
 
 	r.Route("/api/v1/badges", func(r chi.Router) {
 		r.Get("/verify/{code}", h.VerifyBadge)
@@ -219,10 +218,18 @@ func (h *HTTPHandler) SavePartialAttempt(w http.ResponseWriter, r *http.Request)
 
 func (h *HTTPHandler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) {
 	quizIDStr := chi.URLParam(r, "quizId")
-	quizID, err := uuid.Parse(quizIDStr)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "ID de quiz inválido")
-		return
+	attemptIDStr := chi.URLParam(r, "attemptId")
+
+	var quizID uuid.UUID
+	var attemptID *uuid.UUID
+
+	if quizIDStr != "" {
+		quizID, _ = uuid.Parse(quizIDStr)
+	}
+	if attemptIDStr != "" {
+		if aid, err := uuid.Parse(attemptIDStr); err == nil {
+			attemptID = &aid
+		}
 	}
 
 	authUser := middleware.GetUserFromContext(r.Context())
@@ -232,22 +239,35 @@ func (h *HTTPHandler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req struct {
+		AttemptID string            `json:"attempt_id"`
 		StudentID string            `json:"student_id"`
 		Answers   map[string]string `json:"answers"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Payload JSON inválido")
-		return
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	if attemptID == nil && req.AttemptID != "" {
+		if aid, err := uuid.Parse(req.AttemptID); err == nil {
+			attemptID = &aid
+		}
 	}
 
 	if studentID == uuid.Nil && req.StudentID != "" {
 		studentID, _ = uuid.Parse(req.StudentID)
 	}
 
-	attempt, err := h.useCase.SubmitQuizAttempt(r.Context(), studentID, quizID, req.Answers)
+	if studentID == uuid.Nil {
+		respondError(w, http.StatusUnauthorized, "Se requiere estudiante autenticado")
+		return
+	}
+
+	attempt, err := h.useCase.SubmitQuizAttempt(r.Context(), studentID, quizID, attemptID, req.Answers)
 	if err != nil {
-		if err == domain.ErrMaxAttemptsReached {
+		if err == domain.ErrMaxAttemptsReached || err == domain.ErrAttemptAlreadySubmitted {
 			respondError(w, http.StatusConflict, err.Error())
+			return
+		}
+		if err == domain.ErrForbidden {
+			respondError(w, http.StatusForbidden, err.Error())
 			return
 		}
 		respondError(w, http.StatusInternalServerError, err.Error())

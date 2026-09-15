@@ -2,19 +2,29 @@ package course
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mooc-platform/backend/internal/domain"
 )
 
+type StorageProvider interface {
+	GeneratePresignedUpload(ctx context.Context, objectKey string, contentType string) (string, error)
+}
+
 type UseCase struct {
 	repo     domain.CourseRepository
 	userRepo domain.UserRepository
+	storage  StorageProvider
 }
 
-func NewUseCase(repo domain.CourseRepository, userRepo domain.UserRepository) *UseCase {
-	return &UseCase{repo: repo, userRepo: userRepo}
+func NewUseCase(repo domain.CourseRepository, userRepo domain.UserRepository, storage ...StorageProvider) *UseCase {
+	uc := &UseCase{repo: repo, userRepo: userRepo}
+	if len(storage) > 0 {
+		uc.storage = storage[0]
+	}
+	return uc
 }
 
 type CreateCourseInput struct {
@@ -179,6 +189,31 @@ func (uc *UseCase) AddResource(ctx context.Context, teacherID uuid.UUID, resourc
 	}
 	if resource.StableID == uuid.Nil {
 		resource.StableID = uuid.New()
+	}
+
+	if resource.ObjectKey == "" {
+		resource.ObjectKey = fmt.Sprintf("resources/%s/raw", resource.ID.String())
+	}
+
+	if uc.storage != nil {
+		contentType := "application/octet-stream"
+		switch resource.Type {
+		case domain.ResourceTypeVideo:
+			contentType = "video/mp4"
+		case domain.ResourceTypeAudio:
+			contentType = "audio/mpeg"
+		case domain.ResourceTypePDF:
+			contentType = "application/pdf"
+		}
+
+		presignedURL, err := uc.storage.GeneratePresignedUpload(ctx, resource.ObjectKey, contentType)
+		if err == nil {
+			resource.PresignedUploadURL = presignedURL
+		}
+	}
+
+	if resource.MediaURL == "" {
+		resource.MediaURL = fmt.Sprintf("s3://mooc-media/%s", resource.ObjectKey)
 	}
 
 	if err := uc.repo.CreateResource(ctx, resource); err != nil {

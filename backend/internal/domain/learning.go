@@ -38,6 +38,8 @@ const (
 var (
 	ErrNotEnrolled             = errors.New("el estudiante no está inscrito en este curso")
 	ErrAlreadyEnrolled         = errors.New("el estudiante ya se encuentra inscrito en este curso")
+	ErrQuizNotFound            = errors.New("quiz no encontrado")
+	ErrAttemptNotFound         = errors.New("intento de quiz no encontrado")
 	ErrMaxAttemptsReached      = errors.New("se ha alcanzado el límite máximo de intentos para este quiz")
 	ErrAttemptAlreadySubmitted = errors.New("este intento de quiz ya fue enviado y calificado")
 	ErrClientProgressRejected  = errors.New("los porcentajes de avance enviados por el cliente son rechazados por seguridad; se requiere validación por heartbeats en servidor")
@@ -79,7 +81,7 @@ type QuizOption struct {
 	ID         uuid.UUID `json:"id"`
 	QuestionID uuid.UUID `json:"question_id"`
 	OptionText string    `json:"option_text"`
-	IsCorrect  bool      `json:"-"` // Oculto explícitamente de JSON para clientes
+	IsCorrect  bool      `json:"is_correct"`
 	Feedback   string    `json:"feedback,omitempty"`
 	Position   int       `json:"position"`
 }
@@ -141,6 +143,8 @@ type LearningRepository interface {
 	CreateQuizAttempt(ctx context.Context, attempt *QuizAttempt) error
 	GetAttemptByID(ctx context.Context, attemptID uuid.UUID) (*QuizAttempt, error)
 	GetStudentAttemptsCount(ctx context.Context, studentID, quizID uuid.UUID) (int, error)
+	GetStudentSubmittedAttemptsCount(ctx context.Context, studentID, quizID uuid.UUID) (int, error)
+	GetActiveAttempt(ctx context.Context, studentID, quizID uuid.UUID) (*QuizAttempt, error)
 	UpdateQuizAttempt(ctx context.Context, attempt *QuizAttempt) error
 
 	UpsertResourceProgress(ctx context.Context, progress *ResourceProgress) error

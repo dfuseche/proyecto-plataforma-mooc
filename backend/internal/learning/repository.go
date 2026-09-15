@@ -88,28 +88,29 @@ func (r *PostgresRepository) CreateQuiz(ctx context.Context, q *domain.Quiz) err
 		return err
 	}
 
-	for _, quest := range q.Questions {
-		if quest.ID == uuid.Nil {
-			quest.ID = uuid.New()
+	for i := range q.Questions {
+		if q.Questions[i].ID == uuid.Nil {
+			q.Questions[i].ID = uuid.New()
 		}
-		quest.QuizID = q.ID
+		q.Questions[i].QuizID = q.ID
 		questQuery := `
 			INSERT INTO quiz_questions (id, quiz_id, question_text, position, points, created_at)
 			VALUES ($1, $2, $3, $4, $5, $6)
 		`
-		if _, err := tx.ExecContext(ctx, questQuery, quest.ID, quest.QuizID, quest.QuestionText, quest.Position, quest.Points, time.Now()); err != nil {
+		if _, err := tx.ExecContext(ctx, questQuery, q.Questions[i].ID, q.Questions[i].QuizID, q.Questions[i].QuestionText, q.Questions[i].Position, q.Questions[i].Points, time.Now()); err != nil {
 			return err
 		}
 
-		for _, opt := range quest.Options {
-			if opt.ID == uuid.Nil {
-				opt.ID = uuid.New()
+		for j := range q.Questions[i].Options {
+			if q.Questions[i].Options[j].ID == uuid.Nil {
+				q.Questions[i].Options[j].ID = uuid.New()
 			}
-			opt.QuestionID = quest.ID
+			q.Questions[i].Options[j].QuestionID = q.Questions[i].ID
 			optQuery := `
 				INSERT INTO quiz_options (id, question_id, option_text, is_correct, feedback, position)
 				VALUES ($1, $2, $3, $4, $5, $6)
 			`
+			opt := q.Questions[i].Options[j]
 			if _, err := tx.ExecContext(ctx, optQuery, opt.ID, opt.QuestionID, opt.OptionText, opt.IsCorrect, opt.Feedback, opt.Position); err != nil {
 				return err
 			}
@@ -213,6 +214,42 @@ func (r *PostgresRepository) GetStudentAttemptsCount(ctx context.Context, studen
 	var count int
 	err := r.db.QueryRowContext(ctx, query, studentID, quizID).Scan(&count)
 	return count, err
+}
+
+func (r *PostgresRepository) GetStudentSubmittedAttemptsCount(ctx context.Context, studentID, quizID uuid.UUID) (int, error) {
+	query := `SELECT COUNT(*) FROM quiz_attempts WHERE student_id = $1 AND quiz_id = $2 AND status = 'submitted'`
+	var count int
+	err := r.db.QueryRowContext(ctx, query, studentID, quizID).Scan(&count)
+	return count, err
+}
+
+func (r *PostgresRepository) GetActiveAttempt(ctx context.Context, studentID, quizID uuid.UUID) (*domain.QuizAttempt, error) {
+	query := `
+		SELECT id, student_id, quiz_id, attempt_number, status, score, answers, submitted_at, created_at
+		FROM quiz_attempts
+		WHERE student_id = $1 AND quiz_id = $2 AND status = 'in_progress'
+		ORDER BY created_at DESC LIMIT 1
+	`
+	var a domain.QuizAttempt
+	var statusStr string
+	var answersBytes []byte
+	err := r.db.QueryRowContext(ctx, query, studentID, quizID).Scan(
+		&a.ID, &a.StudentID, &a.QuizID, &a.AttemptNumber, &statusStr, &a.Score, &answersBytes, &a.SubmittedAt, &a.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	a.Status = domain.AttemptStatus(statusStr)
+	if len(answersBytes) > 0 {
+		_ = json.Unmarshal(answersBytes, &a.Answers)
+	}
+	if a.Answers == nil {
+		a.Answers = make(map[string]string)
+	}
+	return &a, nil
 }
 
 func (r *PostgresRepository) UpdateQuizAttempt(ctx context.Context, a *domain.QuizAttempt) error {
