@@ -22,39 +22,48 @@ type StorageService struct {
 
 func NewStorageService(cfg *config.Config) (*StorageService, error) {
 	endpointHost := cfg.MinIOEndpoint
+	opts := minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.MinIOAccessKey, cfg.MinIOSecretKey, ""),
+		Secure: cfg.MinIOSecure,
+		Region: cfg.S3Region,
+	}
+
 	if cfg.ExternalMinIOEndpoint != "" {
 		u, err := url.Parse(cfg.ExternalMinIOEndpoint)
 		if err == nil && u.Host != "" {
 			endpointHost = u.Host
+			dialTarget := cfg.MinIOEndpoint
+			opts.Transport = &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					if strings.HasPrefix(addr, endpointHost) {
+						addr = dialTarget
+					}
+					var dialer net.Dialer
+					return dialer.DialContext(ctx, network, addr)
+				},
+			}
 		}
 	}
 
-	dialTarget := cfg.MinIOEndpoint
-
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if strings.HasPrefix(addr, endpointHost) {
-				addr = dialTarget
-			}
-			var dialer net.Dialer
-			return dialer.DialContext(ctx, network, addr)
-		},
+	client, err := minio.New(endpointHost, &opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init storage client: %w", err)
 	}
 
-	client, err := minio.New(endpointHost, &minio.Options{
-		Creds:     credentials.NewStaticV4(cfg.MinIOAccessKey, cfg.MinIOSecretKey, ""),
-		Secure:    cfg.MinIOSecure,
-		Transport: transport,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to init MinIO client: %w", err)
+	mediaBucket := cfg.MediaBucket
+	if mediaBucket == "" {
+		mediaBucket = "mooc-media"
+	}
+	badgeBucket := cfg.BadgeBucket
+	if badgeBucket == "" {
+		badgeBucket = "mooc-badges"
 	}
 
 	return &StorageService{
 		client:      client,
-		mediaBucket: "mooc-media",
-		badgeBucket: "mooc-badges",
+		mediaBucket: mediaBucket,
+		badgeBucket: badgeBucket,
 	}, nil
 }
 

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: mooc-redis
+    restart: always
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: mooc-worker-server
+    command: ["/app/worker"]
+    restart: always
+    env_file:
+      - worker-server.env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
