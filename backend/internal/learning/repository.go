@@ -161,10 +161,12 @@ func (r *PostgresRepository) GetQuizWithAnswers(ctx context.Context, quizID uuid
 		options := make([]domain.QuizOption, 0)
 		for oRows.Next() {
 			var opt domain.QuizOption
-			if err := oRows.Scan(&opt.ID, &opt.QuestionID, &opt.OptionText, &opt.IsCorrect, &opt.Feedback, &opt.Position); err != nil {
+			var feedback sql.NullString
+			if err := oRows.Scan(&opt.ID, &opt.QuestionID, &opt.OptionText, &opt.IsCorrect, &feedback, &opt.Position); err != nil {
 				oRows.Close()
 				return nil, err
 			}
+			opt.Feedback = feedback.String
 			options = append(options, opt)
 		}
 		oRows.Close()
