@@ -239,8 +239,9 @@ func (r *PostgresRepository) GetFullVersionHierarchy(ctx context.Context, versio
 			for rRows.Next() {
 				var res domain.Resource
 				var typeStr, procStr string
+				var canonicalMarkdown, mediaURL sql.NullString
 				if err := rRows.Scan(
-					&res.ID, &res.UnitID, &res.StableID, &res.Title, &typeStr, &res.CanonicalMarkdown, &res.MediaURL,
+					&res.ID, &res.UnitID, &res.StableID, &res.Title, &typeStr, &canonicalMarkdown, &mediaURL,
 					&res.IsVisible, &res.IsMandatory, &res.IsDownloadable, &res.Position, &procStr, &res.CreatedAt, &res.UpdatedAt,
 				); err != nil {
 					rRows.Close()
@@ -249,6 +250,8 @@ func (r *PostgresRepository) GetFullVersionHierarchy(ctx context.Context, versio
 				}
 				res.Type = domain.ResourceType(typeStr)
 				res.ProcessingStatus = domain.ProcessingStatus(procStr)
+				res.CanonicalMarkdown = canonicalMarkdown.String
+				res.MediaURL = mediaURL.String
 				resources = append(resources, res)
 			}
 			rRows.Close()
@@ -354,8 +357,9 @@ func (r *PostgresRepository) GetResourceByID(ctx context.Context, resourceID uui
 	`
 	var res domain.Resource
 	var typeStr, procStr string
+	var canonicalMarkdown, mediaURL sql.NullString
 	err := r.db.QueryRowContext(ctx, query, resourceID).Scan(
-		&res.ID, &res.UnitID, &res.StableID, &res.Title, &typeStr, &res.CanonicalMarkdown, &res.MediaURL,
+		&res.ID, &res.UnitID, &res.StableID, &res.Title, &typeStr, &canonicalMarkdown, &mediaURL,
 		&res.IsVisible, &res.IsMandatory, &res.IsDownloadable, &res.Position, &procStr, &res.CreatedAt, &res.UpdatedAt,
 	)
 	if err != nil {
@@ -366,6 +370,8 @@ func (r *PostgresRepository) GetResourceByID(ctx context.Context, resourceID uui
 	}
 	res.Type = domain.ResourceType(typeStr)
 	res.ProcessingStatus = domain.ProcessingStatus(procStr)
+	res.CanonicalMarkdown = canonicalMarkdown.String
+	res.MediaURL = mediaURL.String
 	return &res, nil
 }
 
