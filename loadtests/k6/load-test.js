@@ -90,6 +90,7 @@ const STAGES = LEVEL_RUN
     ];
 
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
   scenarios: {
     trafico_mixto: {
       executor: 'ramping-vus',

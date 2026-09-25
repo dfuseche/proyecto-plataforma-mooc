@@ -115,6 +115,7 @@ const segmentBytes = new Counter('media_segment_bytes_downloaded');
 const segmentDownloadFailures = new Counter('media_segment_download_failures');
 
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
   scenarios: {
     subida_multimedia: {
       executor: 'constant-vus',
