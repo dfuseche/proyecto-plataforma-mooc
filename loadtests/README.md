@@ -51,6 +51,15 @@ SELECT count(*) FROM users WHERE email LIKE 'loadtest%@mooc.test'; -- 302
 SELECT id, slug, current_published_version_id FROM courses WHERE id = '10000000-0000-0000-0000-000000000001';
 ```
 
+**Antes de cada corrida completa de `run_escenario1_niveles.ps1`**, reinicia los
+intentos de quiz de los usuarios de carga (si no, los tokens de menor numero
+agotan sus 3 intentos entre corridas y `start-attempt` empieza a responder
+409 para siempre, dejando `quiz_submit` sin muestras):
+
+```
+psql "postgres://mooc_user:TU_PASSWORD@127.0.0.1:5432/mooc_db" -f loadtests/seed/reset_quiz_attempts.sql
+```
+
 ## 2. Instalar k6
 
 - Windows: `choco install k6` o descarga el binario desde https://k6.io/docs/get-started/installation/

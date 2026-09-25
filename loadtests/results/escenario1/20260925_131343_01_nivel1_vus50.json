@@ -1,0 +1,407 @@
+{
+    "metrics": {
+        "http_req_connecting": {
+            "p(95)": 0,
+            "avg": 0.5216210119397141,
+            "min": 0,
+            "med": 0,
+            "max": 109.1065,
+            "p(90)": 0
+        },
+        "iterations": {
+            "rate": 13.975499245818767,
+            "count": 5021
+        },
+        "http_req_duration{endpoint:enroll}": {
+            "p(95)": 123.76036499999998,
+            "avg": 116.96427668195716,
+            "min": 109.151,
+            "med": 115.42555,
+            "max": 462.2019,
+            "p(90)": 121.28029000000001,
+            "thresholds": {
+                "p(95)<500": false
+            }
+        },
+        "http_req_duration{endpoint:heartbeat}": {
+            "min": 116.8941,
+            "med": 123.73695000000001,
+            "max": 326.8365,
+            "p(90)": 133.95741,
+            "p(95)": 148.352025,
+            "avg": 127.43266827217137,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "quiz_max_attempts_reached": {
+            "rate": 0.47039621042488977,
+            "count": 169
+        },
+        "data_sent": {
+            "count": 1965160,
+            "rate": 5469.845070287434
+        },
+        "iteration_duration": {
+            "avg": 2249.264741605264,
+            "min": 1114.5954,
+            "med": 2244.0524,
+            "max": 3601.733,
+            "p(90)": 3053.6303,
+            "p(95)": 3158.288
+        },
+        "enroll_duration": {
+            "max": 462.2019,
+            "p(90)": 121.28029000000001,
+            "p(95)": 123.76036499999998,
+            "avg": 116.96427668195716,
+            "min": 109.151,
+            "med": 115.42555
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 10218,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "http_req_tls_handshaking": {
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0
+        },
+        "quiz_start_duration": {
+            "avg": 122.24847571059432,
+            "min": 113.2609,
+            "med": 120.3706,
+            "max": 223.9086,
+            "p(90)": 125.71622,
+            "p(95)": 134.39825999999996
+        },
+        "http_req_waiting": {
+            "min": 104.2954,
+            "med": 115.8463,
+            "max": 607.6653,
+            "p(90)": 125.86311000000002,
+            "p(95)": 136.70111,
+            "avg": 118.90094348209021
+        },
+        "vus_max": {
+            "min": 50,
+            "max": 50,
+            "value": 50
+        },
+        "http_req_duration{endpoint:quiz_submit}": {
+            "max": 279.7884,
+            "p(90)": 127.88241000000001,
+            "p(95)": 133.17201499999987,
+            "avg": 124.80118119266054,
+            "min": 114.973,
+            "med": 121.46180000000001,
+            "thresholds": {
+                "p(95)<600": false
+            }
+        },
+        "http_reqs": {
+            "count": 10218,
+            "rate": 28.44087856876641
+        },
+        "http_req_duration": {
+            "med": 116.27515,
+            "max": 815.9674,
+            "p(90)": 126.19604000000002,
+            "p(95)": 137.39189999999996,
+            "avg": 119.3776403601488,
+            "min": 104.8547,
+            "thresholds": {
+                "p(95)<500": false
+            }
+        },
+        "http_req_duration{endpoint:badge}": {
+            "med": 112.37765,
+            "max": 161.2752,
+            "p(90)": 118.52035,
+            "p(95)": 120.68519,
+            "avg": 113.48091965240668,
+            "min": 105.8687,
+            "thresholds": {
+                "p(95)<300": false
+            }
+        },
+        "vus": {
+            "value": 1,
+            "min": 0,
+            "max": 50
+        },
+        "http_req_duration{endpoint:catalog}": {
+            "avg": 117.28509456998299,
+            "min": 104.8547,
+            "med": 115.18495,
+            "max": 815.9674,
+            "p(90)": 123.0622,
+            "p(95)": 134.30962,
+            "thresholds": {
+                "p(95)<300": false
+            }
+        },
+        "heartbeat_duration": {
+            "p(90)": 133.95741,
+            "p(95)": 148.352025,
+            "avg": 127.43266827217137,
+            "min": 116.8941,
+            "med": 123.73695000000001,
+            "max": 326.8365
+        },
+        "http_req_duration{endpoint:quiz_start}": {
+            "med": 120.3706,
+            "max": 223.9086,
+            "p(90)": 125.71622,
+            "p(95)": 134.39825999999996,
+            "avg": 122.24847571059432,
+            "min": 113.2609,
+            "thresholds": {
+                "p(95)<500": false
+            }
+        },
+        "data_received": {
+            "count": 33175589,
+            "rate": 92341.25055747727
+        },
+        "quiz_double_grading_detected": {
+            "rate": 0,
+            "count": 0,
+            "thresholds": {
+                "count==0": false
+            }
+        },
+        "http_req_duration{expected_response:true}": {
+            "max": 815.9674,
+            "p(90)": 126.19604000000002,
+            "p(95)": 137.39189999999996,
+            "avg": 119.3776403601488,
+            "min": 104.8547,
+            "med": 116.27515
+        },
+        "checks": {
+            "passes": 10335,
+            "fails": 0,
+            "value": 1
+        },
+        "quiz_submit_duration": {
+            "p(95)": 133.17201499999987,
+            "avg": 124.80118119266054,
+            "min": 114.973,
+            "med": 121.46180000000001,
+            "max": 279.7884,
+            "p(90)": 127.88241000000001
+        },
+        "http_req_receiving": {
+            "min": 0,
+            "med": 0.21045,
+            "max": 208.3021,
+            "p(90)": 0.9256,
+            "p(95)": 1.013445,
+            "avg": 0.47040149735760456
+        },
+        "http_req_blocked": {
+            "p(95)": 0,
+            "avg": 0.5241243589743589,
+            "min": 0,
+            "med": 0,
+            "max": 109.1065,
+            "p(90)": 0
+        },
+        "http_req_sending": {
+            "max": 1.507,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.006295380700724209,
+            "min": 0,
+            "med": 0
+        }
+    },
+    "setup_data": {
+        "quizAnswers": {
+            "10000000-0000-0000-0000-000000000021": "10000000-0000-0000-0000-000000000031",
+            "10000000-0000-0000-0000-000000000022": "10000000-0000-0000-0000-000000000034",
+            "10000000-0000-0000-0000-000000000023": "10000000-0000-0000-0000-000000000037"
+        },
+        "tokens": [
+            "22161935ad8bce18c44d6ed8f3202ffdc745cf39af50c887044d396aa46c6ae3",
+            "6ef86ea44a7e2648b7bb92b89ba09f3de270d0b035bc70104d45d49a1e1c13b3",
+            "854cbb0ae78acba5ddb0e6fd98d3961111e98e4fd855d24e8b604ab370548b7f",
+            "3e3d69ec68d3a1707162dfbf8f68a62e8cac3e074c692b508eb5558e1c812a0d",
+            "fb22e0965e335fa5e12684723f4d721131b4be7105be8a4827e1cd45a3260fa5",
+            "63b55e93ca822b3c622880feb1082bcb17b0b6e7e0e187c989274c6ce7d14b8f",
+            "6c5bab92992e85d4a91a02eab0d5ba050db7efe0c4b1b28e2ab5a62f9bffefb2",
+            "35dfd09924432d3249fdb6dd516ac776f9c113d10a304da278cdabdf45b48d57",
+            "adf71c200ffae2ac58ec9bad64336df739c78faf47ea5a17bb34cb4b7547112e",
+            "820cfbf43a2c69fd2a78b204033932548b55ea883b728f395fbc27b1d3166207",
+            "e65e3ac6240d7ef0e1de5e39def02199797bff98bcaf920167deeafd13cf1576",
+            "f4e9088e7ad2d368a0f1e954122f4b2b2fa50da48f4432617d16f21da63dc9c2",
+            "72f7a1a332137a8d7cd787be7aced32c4e44bcd995012e144a2939bbb3a9b4d3",
+            "2fa31afb7f4b303daf27eabf925557fc4c71280b6e75c961e0ff4c389f89e6e0",
+            "47303ef3970862cb461135ff62565bb2aa6b5021bc8bf66026ce6d1b352df8ae",
+            "b57f82c4e691966f0169938de8c72c0b3779466da215f7e32cf97804df7fdb98",
+            "8c6888273421c23e65d8b0d41fb9d9a276d4436598f2afb858488eb30390b884",
+            "7d8f23fccb5468102b1a0b83bfa8301b26d3cacc77e6ef21070efed0dd146b8d",
+            "7b33d82d0992bb9f0317d8c9bb785e5e5065e8bdec8893b51f4a1e44e60d7679",
+            "fee9c1e998495dc983cce29b72995a5774829f3ce56f5b24d20cdace807b4480",
+            "5c2b76e3d4510ebc363a0188be23cfddbf7094c61b6a26d9f214b5520ab4bbd1",
+            "f5cd799d23e28ce3cfb0a2c6c4e660ce0e7619e69b2228c98e03c44dda1becd9",
+            "4b4b8e10168ad68319f3805bc83112261b401dbef0fa2ce01641369b25f7dc2d",
+            "d345a28f4eff853f5ed26d9751134eb40fd616a9f495c70a771360d3b56bec9c",
+            "5fb4414cb05e78e4875f052dc651c2861f0d14d70b13df2561b59b733a035aa9",
+            "759bf79a7a40bad9832d44a1278bb63bc12f43e25e42bdb18f7e6b328dd3aaae",
+            "624cbe79e39c9fbf52dc33b012db7fe380dc8d81b2e6908822b7b96dc39f3bdf",
+            "01095d6d04555f757f77bbac68d6105d7d56334599556f304fcd3a678a1a0da2",
+            "ad747d04d39179618d0a417ecd410e10bc3b073b90c9b9bc168e6d24783bb28a",
+            "60b10de571b58efb9778b10f88dce55c1a327a53da0013b20debad538ccb7dbd",
+            "cf09b4efbd695ad5775cade93c7d0bc02f1c8277c70adcf554dd0af5739bd798",
+            "57a3a992bae7211a10e0fb5b6a5e300ba1483f9d38d016610453f96fa0a55f62",
+            "3588410a580eb5e002d3f6001f7f2ca88c51c1c8b8b3e84d592814c5f1f92b91",
+            "dc8ae46d79e54afa72d86f13cfc170d9ca41c61c42d999f2624cbcd6e791837c",
+            "1f4979d5c127b8ef95dad283e0cb63157c72aa885590e74b7b5f679af2f8b8cf",
+            "61eba744a03cbc44e71eb4e38e846bb7c6549b8c18a72822ea6558b7f0099252",
+            "159d7825944c0a313c37875b5f288883ca9e7574ff96113c66b7c6dea7851ddd",
+            "bcc1956c01760fbbb4ad70feac41b8fbe33955314f562195b99faf9a7054304a",
+            "c301243e9929616eef4844902ad2ad61b0aef621ad377feb711347619b058603",
+            "88c4e9f5cd1fa81b9d5ce00079ae1d93579a3d47db60dd91de7a55e01a75d649",
+            "9009c643be553c6dc40ad62327befc409f79c731292d6637f5b3e9c64a8c3c6d",
+            "7b85e30d6f2978e689a7f4aeb8e1ca3e4cbf871f52c386429def668793dcdf7e",
+            "7762aefeda53fb8fab0dcc8cbe5447ecea526204f15d3ae2d0eba4381cdedee2",
+            "9b8538e3df95c287088ae3b570f47824a65d1cbe9f7a9100ea05b598c8660420",
+            "5825eb002aac94571e9f287464380973f0984643ae850515646e80fbd696ae8f",
+            "7d21f11e6a4022565b357233855cc4ccec273b5e58e263d6dd162c59ae4cb015",
+            "47210a7e582301600d9826577de78e9abd508ee1a09ec5b1a26f0008aac8db09",
+            "034b6f126cff46a536692bb7856cada47ab64956d1bf926b1392754ee0d87be2",
+            "10a7490d1b2de4d6214af5544d55e31d49284ead1a674ba2a17e530a7fc6c0ee",
+            "deaf24207d15a22cdd36045ed417333079d8cc6ad221779a2620d695e491142e",
+            "b4a3a4d093576f27e7a3e83f6a5720fae38da13b8d29d08945f7fc76a91d1b56",
+            "efd73987c268ae030d368a205e8ccf060f4f640d097e12ab6cd2244c4e07d15d",
+            "4ab6688923d831852fcecd4cee4c442f27a94c666fcb2585d47c3b3e6a9b574d",
+            "ebf535336bea1259044f13c3e79bf0efac7429f1aca2db9020af62c33b2cdcb3",
+            "57796bf30ad0c34d47363166a436c0cba554deb021b4210b487efd0ee66ddd18",
+            "78301409261d88a46aec81a4a03c3f8e8be8e17410068676c4771e583da9fb8c",
+            "c86c79ac6aff7817ee1159da01917ffd2db503ae0912e14002594f363459190e",
+            "b8787a5faa69950731214189e98d8000405a37f36784b0a50e0dd5362571cb03",
+            "425d76c4c8b6bf69e6927ddd611f5368c7aa98584f0060387ef59fab2ed46e33",
+            "7694490e3e3da30a065caee38ba06cddffbcd7397e81c44869d28b04a2f2a96e",
+            "e4d276a29503d6b260ec75b0c9015af42860449b3ac4c1cf68b293f0e0ebdbfe",
+            "7de652fdda7253c903b200da485729c0cc5035f94f56c01af8fa6c7ef571dbbf",
+            "23a8019015b80ac7266f4aa70f5385e64b7cd9a8729d8da4d189c2641fecc7d1",
+            "5d6141c8aee262565fe5d9e900e3926d327fea7deda8ed3644b6bcfac5383d53",
+            "7f32e6366fe152ca65e277d6890b4566949f25e4f94f4931d4429fd4c4114f3b",
+            "ebb0c0ad00cc4a6cd2761f9aa8111fbec6475a8ae8c4902f66006894101567ef",
+            "1f853618bd2b47cba0d2c91e2b66bcf046159ecdf03d8c37c2bd6240add8999d",
+            "38d85697e6cadb0efe5fe7ecd56c4312d4a14180465575380e274737e795200f",
+            "db5498aa9d48b6237e9a0f49bcbd959a331fc61f1633568d04fa4e50dbb35fda",
+            "5a7ccb6f738529d905d0b79e0e76d81a643d038f5a51a62b1ef1c0c4ed84bcb8",
+            "6763ea6f15bcdba8c73aef8d505ede294780751278ecd37f5cb8a9a87350a288",
+            "207e0df576cb2bbeb7bd08c547e36465c734c81ddd07aac9e5c12419885c2979",
+            "e7d83e58925c79a519291dca9db75a4de3c4db63cae10a8e2b06d3671f3db911",
+            "1e971492b3ffee44fabfe82ec79ad020b080a3a26219b614940d8594fa216a7d",
+            "f01cdaab01fc4321801656bd5699ff69bdb5530da91da6d0008c0839fe74b4f2",
+            "1250c5e919441b94dd917ee191ea6aacc56c607f13ee37a5216d93657a1dffd2",
+            "f6342520506845c0474dfe6c27f27ed11471c99ea16d7fda92ac9a2f9a3a8a41",
+            "ab1b51d70f65769fa17a1dbe2bef97a3d1dcad359532731c831a63f08e543885",
+            "e350739f6e99fe06dad1610095d3ebd30c29eb5bd3f808f2b22b5def42603ec0",
+            "2fc7056ea159317e5f9b901671fe7cb02ed10417e6a8f106ffe76fcfd7d575aa",
+            "b00722644db1c17d767956bf65fa2d73e4baef87da084aa276fb3effc550bad6",
+            "101cd28ea2a975bff9d1277f71d9a291ef28de8ff26bf12253df401bea527143",
+            "43354cfcd907f75b84de15b62576ce36f972f8e8a1323a88e4ca312a4c8d08d7",
+            "73e1d4812cef05335e8ead51ea476ad99091209c593920aa66cba3eced9c42ca",
+            "5fa05f8f7d5475ff9e91ccb194ce2568bfc5ae3fc92ccf19247afe595c4b9f96",
+            "341bca66719a86af5a20ca2436b163c01268b231a62b783f2094f053b7af7dfc",
+            "cac3551ace18d9fd54d926bfae7b9dbc7752b88f71472a122882133a06851f8b",
+            "e1b095df08b5bbe2c990247ec4e48ab44085cc2b40ab7d8202246318ca64fed1",
+            "f93a6405d0e85265bca47538c1a60147b1c6ca5e1306d0d6a6c5681abe67e783",
+            "a35d8549531f3a8df9063bd5cf6966f5752e55fd02495ab131dc88f340184a29",
+            "08d8008356dfa179830fb1e9dc3dc619111da1bd5960fa55bdf13c28dd2178c6",
+            "cc465fceba213865529566b6147a048c3b0471bd4ba3478eda8ecfd867bb47e7",
+            "31f55a99e530c8dce6a60ef8c37913fc1a008cbbed9ac8e55e944f522a489eb1",
+            "0d127d9919bc9c11168c0a1994171c98a9278534384392f41b72c3944c10fda6",
+            "e3ee8afadf83f8f5ff471ced020d114666a6cb8997fd210990c11cf5e9a4a9c0",
+            "038718e32edef2a8355c71e8dc62d8dd59258268c44b6e5b5d8697add3f375cb",
+            "0a8b76bed1ba9398a9b098ba027464183e6bb25fa2f76a614b64ef556cf6ba18",
+            "4ae510f2b30f4471bd22058af49a9b8cb918f1cffde69dfb82c9fa3a7a21c87c",
+            "4a3f871f26e3eef794bbff3525e0006dab4176b66f6e371f05d899e15923af81",
+            "1e83e2ec4fb49d4764a221e3b4a9e8264d1d8febb482eb0a9b5e7b3150530c83"
+        ]
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "catalogo responde 200": {
+                    "path": "::catalogo responde 200",
+                    "id": "9035e810067dc5e361e96e45543f0d6a",
+                    "passes": 2965,
+                    "fails": 0,
+                    "name": "catalogo responde 200"
+                },
+                "detalle de curso responde 200": {
+                    "name": "detalle de curso responde 200",
+                    "path": "::detalle de curso responde 200",
+                    "id": "cda7680d35ffdf50c34055bb656d2cf5",
+                    "passes": 2965,
+                    "fails": 0
+                },
+                "inscripcion responde 200/201/409": {
+                    "name": "inscripcion responde 200/201/409",
+                    "path": "::inscripcion responde 200/201/409",
+                    "id": "0b6a75a4261fe2639a14f70ad7514204",
+                    "passes": 1308,
+                    "fails": 0
+                },
+                "heartbeat responde 200": {
+                    "name": "heartbeat responde 200",
+                    "path": "::heartbeat responde 200",
+                    "id": "0264c27b959875cddef5ee53cae163e8",
+                    "passes": 1308,
+                    "fails": 0
+                },
+                "verificacion de insignia responde 200": {
+                    "name": "verificacion de insignia responde 200",
+                    "path": "::verificacion de insignia responde 200",
+                    "id": "5af4268f17ea9ce8802bc93e67d794bb",
+                    "passes": 748,
+                    "fails": 0
+                },
+                "inicio de intento de quiz responde 201/409": {
+                    "path": "::inicio de intento de quiz responde 201/409",
+                    "id": "3ee4ef7c7c5d16b3eff00fbe8d51edc9",
+                    "passes": 387,
+                    "fails": 0,
+                    "name": "inicio de intento de quiz responde 201/409"
+                },
+                "envio de intento de quiz responde 200": {
+                    "path": "::envio de intento de quiz responde 200",
+                    "id": "0032fe4c7b8f6e32aa568e45e4be5d5e",
+                    "passes": 218,
+                    "fails": 0,
+                    "name": "envio de intento de quiz responde 200"
+                },
+                "el intento queda calificado (score numerico)": {
+                    "name": "el intento queda calificado (score numerico)",
+                    "path": "::el intento queda calificado (score numerico)",
+                    "id": "c610e9448cd6d0d880c97eda1e0ca23e",
+                    "passes": 218,
+                    "fails": 0
+                },
+                "envio duplicado de quiz es rechazado (409) sin doble calificacion": {
+                    "name": "envio duplicado de quiz es rechazado (409) sin doble calificacion",
+                    "path": "::envio duplicado de quiz es rechazado (409) sin doble calificacion",
+                    "id": "96f6b65fd6a61b663687dfa69cbe5d94",
+                    "passes": 218,
+                    "fails": 0
+                }
+            }
+    }
+}

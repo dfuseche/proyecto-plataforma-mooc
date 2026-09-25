@@ -157,7 +157,8 @@ export function setup() {
   });
   if (snapshotRes.status === 200) {
     const snapshot = snapshotRes.json();
-    for (const question of snapshot.questions || []) {
+    const questions = (snapshot && snapshot.data && snapshot.data.questions) || [];
+    for (const question of questions) {
       if (question.options && question.options.length > 0) {
         quizAnswers[question.id] = question.options[0].id;
       }
@@ -237,7 +238,8 @@ export default function (data) {
       if (startRes.status === 409) {
         quizMaxAttemptsReached.add(1);
       } else if (startRes.status === 201) {
-        const attempt = startRes.json();
+        const startBody = startRes.json();
+        const attempt = startBody && startBody.data;
 
         if (attempt && attempt.status === 'in_progress' && attempt.id) {
           const submitRes = http.post(
@@ -250,7 +252,7 @@ export default function (data) {
             'envio de intento de quiz responde 200': (r) => r.status === 200,
             'el intento queda calificado (score numerico)': (r) => {
               const body = r.json();
-              return !!body && typeof body.score === 'number';
+              return !!body && body.data && typeof body.data.score === 'number';
             },
           });
 
