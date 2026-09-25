@@ -1,10 +1,20 @@
 # Pruebas de capacidad — Entrega 2 (ISIS4426)
 
-> Estado: **Escenario 1 y Escenario 2 completos** (commit `870f259`). Faltan
-> completar a mano: versión de k6, tier de Cloud SQL, y (Escenario 1) p99 +
-> métricas de infraestructura — ver la sección "Limitaciones" de cada
-> escenario. Ninguna otra cifra de este archivo es estimada; todas salen de
-> las corridas enlazadas en `loadtests/results/`.
+> Estado: **Escenario 1 y Escenario 2 completos**, con resultados
+> funcionales y de infraestructura (Web Server, Worker Server y Cloud SQL)
+> para ambos, sobre el commit `870f259`. Ninguna cifra de este documento es
+> estimada; todas salen de las corridas enlazadas en `loadtests/results/`.
+> Gaps conocidos y explícitos (no bloquean la entrega, quedan documentados
+> en "Limitaciones" de cada escenario): p99 no capturado en la corrida de
+> Escenario 1 (el script ya lo agrega para corridas futuras); memoria/red/
+> disco no capturadas en ninguna VM (Cloud Monitoring retroactivo solo trae
+> CPU y conexiones sin agente adicional), con granularidad de 1 minuto
+> (más gruesa que los 5s de `monitor_vm.sh`); no se acotó el punto exacto
+> de degradación de Escenario 1 entre 150 y 400 VUs; no se corrió una
+> ráfaga de login aparte; Escenario 2 no alcanzó saturación real con los
+> niveles probados, reutiliza el mismo archivo de video para los "3
+> perfiles", y no mide reproducción con un player real ni profundidad de
+> cola de asynq directamente.
 
 ## Herramienta de generación de carga
 
@@ -57,9 +67,9 @@ Ejecutados con `loadtests/k6/run_escenario1_niveles.ps1` (perfil corto `LEVEL_RU
 ### Condiciones fijas durante todas las corridas
 
 - Commit/release evaluado: `870f259` (rama `main`)
-- Configuración de la VM (Web Server): `TODO — completar con la especificación real del proveedor (objetivo: 2 vCPU / 2 GiB o la más cercana disponible, justificar si difiere)`
-- Base de datos: Cloud SQL PostgreSQL (`mooc-db-instance`) — `TODO tier/vCPU/RAM`
-- Versión de k6: `TODO — correr "k6 version" y pegar aquí`
+- Configuración de la VM (Web Server y Worker Server): **`e2-highcpu-2`** (2 vCPU, 2 GiB RAM) — coincide con el objetivo de 2 vCPU/2 GiB del enunciado.
+- Base de datos: Cloud SQL PostgreSQL (`mooc-db-instance`) — tier **`db-custom-2-8192`** (2 vCPU, 8 GiB RAM), 20 GiB disco, zonal (sin réplicas de lectura, como pide el enunciado).
+- Versión de k6: **`k6.exe v2.3.0` (commit e088784614, go1.26.8, windows/amd64)**
 - Generador de carga: laptop del equipo (Intel Core i9-13905H, 14 núcleos/20 hilos, 32 GB RAM) — fuera de las dos VMs de la aplicación, como exige el enunciado. Con esta carga (máx. ~35 req/s, cientos de VUs I/O-bound) el generador no fue el cuello de botella; no se instrumentó CPU/red del generador para esta entrega (ver limitaciones).
 - Corrida usada: `loadtests/results/escenario1/20260925_131343_*` (línea base 13:13, repetición finalizó 13:54 — ver `.log`/`.json` de cada nivel)
 
@@ -86,6 +96,18 @@ Por endpoint (avg / p95, ms) — línea base → nivel 2 (rango sano) vs. nivel 
 | `quiz_start` | 123.6 / 130.3 | 122.2 / 134.4 | 156.0 / 275.2 | 4511.2 / 59896.0 | 8708.4 / 59897.3 |
 | `quiz_submit` | 123.3 / 127.1 | 124.8 / 133.2 | 157.7 / 290.5 | **199.9 / 306.5** | **178.3 / 265.8** |
 
+**Infraestructura** (Cloud Monitoring, cruzado por ventana de tiempo exacta de cada nivel — `loadtests/results/escenario1/infra/`):
+
+| Nivel | CPU Web Server (avg/max %) | CPU Cloud SQL (avg/max %) | Conexiones activas Cloud SQL (avg/max) |
+|---|---|---|---|
+| Línea base | 4.1 / 5.4 | 5.7 / 6.1 | 7.8 / 8 |
+| Nivel 1 | 8.6 / 13.3 | 7.9 / 11.0 | 8.0 / 8 |
+| Nivel 2 | 17.6 / 38.2 | 22.9 / 55.7 | 8.4 / 12 |
+| Nivel 3 | 8.9 / 24.5 | 11.7 / 35.0 | 16.0 / 28 |
+| Repetición | 8.2 / 15.1 | 12.2 / 24.6 | 21.7 / 28 |
+
+**Hallazgo clave:** la CPU de Cloud SQL nunca supera 56% (Nivel 2, su pico real) y de hecho *baja* en Nivel 3 respecto a Nivel 2 — igual que la CPU de Web Server. Lo que sí crece de forma sostenida y proporcionalmente mucho más que la CPU es el número de conexiones activas (8 → 28, x3.5) entre Nivel 2 y Nivel 3/Repetición. Esto apunta a agotamiento del **pool de conexiones** (de la API hacia Cloud SQL, o el límite de conexiones de la instancia) como el mecanismo de degradación, no a falta de cómputo en la base de datos — la CPU de ambas VMs y de Cloud SQL cae en Nivel 3 porque las requests se quedan esperando una conexión libre en vez de ejecutarse.
+
 Nota sobre `quiz_submit` en Nivel 3/Repetición: su latencia se mantiene baja (no es el cuello de botella) porque muy pocas iteraciones llegan a completarlo — la mayoría de las VUs ya quedan bloqueadas esperando `catalog`/`enroll`/`heartbeat`/`quiz_start` (todas saturadas al límite de 60s, el timeout HTTP por defecto de k6) antes de alcanzar el paso de submit. El error 5.19%/8.71% es prácticamente en su totalidad timeout de esas cuatro operaciones.
 
 ### Respuestas exigidas por el enunciado
@@ -96,7 +118,7 @@ Hasta 150 VUs concurrentes (Nivel 2) la plataforma sostiene toda la mezcla de op
 
 **¿Qué operaciones concentran la latencia o los errores y cómo se relacionan con la API, Redis o su cola de mensajería, el pool de conexiones y PostgreSQL?**
 
-Los cuatro endpoints que golpean la base de datos en cada request (`catalog`, `enroll`, `heartbeat`, `quiz_start` — todos con lectura/escritura a PostgreSQL) se degradan juntos y de forma pareja en Nivel 3/Repetición (p95 ~58.9-60.0s en los cuatro), lo que apunta a un cuello de botella compartido aguas abajo — el candidato más probable es el pool de conexiones de la API hacia PostgreSQL (o el propio PostgreSQL con la VM de 2 vCPU) saturándose, no un endpoint individual con una consulta particularmente cara. No se capturaron métricas de infraestructura (CPU/memoria de la VM, conexiones activas de PostgreSQL) durante esta corrida para confirmar cuál de los dos es el límite exacto — es la limitación más importante de este resultado (ver abajo). Este escenario no usa Redis ni cola de mensajería (esa es la ruta del Escenario 2).
+Los cuatro endpoints que golpean la base de datos en cada request (`catalog`, `enroll`, `heartbeat`, `quiz_start` — todos con lectura/escritura a PostgreSQL) se degradan juntos y de forma pareja en Nivel 3/Repetición (p95 ~58.9-60.0s en los cuatro), lo que apunta a un cuello de botella compartido aguas abajo. Las métricas de infraestructura (tabla arriba) confirman **cuál** de los dos: no es cómputo — la CPU de Cloud SQL nunca pasa de 56% y de hecho cae en Nivel 3 respecto a Nivel 2 (22.9%→11.7% avg), igual que la CPU de Web Server (17.6%→8.9% avg) — es el **pool de conexiones hacia PostgreSQL**, cuyas conexiones activas casi se cuadruplican (8→28) justo cuando la CPU de ambos servidores cae, el patrón clásico de requests haciendo cola por una conexión libre en vez de ejecutarse. Este escenario no usa Redis ni cola de mensajería (esa es la ruta del Escenario 2).
 
 **¿Se conservan la integridad de intentos, la calificación y el progreso bajo concurrencia? (incluye la comprobación de envío duplicado sin doble calificación)**
 
@@ -108,7 +130,7 @@ Ver "Propuesta de evolución" al final del documento — se completa junto con e
 
 ### Limitaciones del experimento
 
-- **No se instrumentó infraestructura durante esta corrida** (`loadtests/monitoring/monitor_vm.sh` no se corrió en paralelo vía SSH a Web Server). La tabla de resultados no tiene columnas de CPU/memoria/red/disco de la VM ni conexiones activas de PostgreSQL, que el enunciado pide explícitamente. La conclusión sobre el pool de conexiones/PostgreSQL como cuello de botella es una hipótesis razonable a partir del patrón de latencias, no una medición directa.
+- **CPU/memoria de infraestructura obtenidas retroactivamente de Cloud Monitoring** (no se corrió `monitor_vm.sh` en vivo durante esta corrida), cruzadas por ventana de tiempo de cada nivel — ver `loadtests/results/escenario1/infra/`. No se capturaron memoria/red/disco de la VM ni de PostgreSQL (Cloud Monitoring por defecto solo trae CPU y conexiones sin agente adicional), y la granularidad es de 1 minuto, más gruesa que los 5s de `monitor_vm.sh`.
 - **p99 no capturado en esta corrida.** El `summaryTrendStats` por defecto de k6 solo exporta avg/min/med/p90/p95/max; se agregó `p(99)` explícitamente al script para corridas futuras, pero esta corrida ya no se repitió solo por esa métrica.
 - **No se acotó el punto exacto de degradación entre 150 y 400 VUs** — el salto entre Nivel 2 y Nivel 3 es grande; un nivel intermedio (p. ej. 250) ayudaría a ubicar el límite con más precisión.
 - **No se ejecutó una variante separada de ráfaga de login**, tal como permite el enunciado (autenticación fuera del recorrido medido en todos los niveles).
@@ -143,11 +165,11 @@ Ejecutados con `loadtests/k6/run_escenario2_niveles.ps1` (subida y consumo suben
 
 - Commit/release evaluado: `870f259` (rama `main`)
 - Corrida usada: `loadtests/results/escenario2/20260925_141917_*` (14:19-14:40 hora Bogotá / 19:19-19:40 UTC)
-- Monitoreo de infraestructura: `loadtests/monitoring/monitor_vm.sh` corrido en paralelo por SSH en **Web Server** únicamente, cada 5s → `loadtests/results/escenario2/web-server_escenario2.csv`. **Worker Server (donde corre FFmpeg) no se monitoreó** — ver limitaciones.
+- Monitoreo de infraestructura: `loadtests/monitoring/monitor_vm.sh` corrido en paralelo por SSH en **Web Server**, cada 5s → `loadtests/results/escenario2/web-server_escenario2.csv`. **Worker Server y Cloud SQL** se cruzaron retroactivamente con Cloud Monitoring (granularidad 1 min) → `loadtests/results/escenario2/infra/`.
 - RAM de Web Server confirmada por el propio CSV (`host_mem_total_mb`): **1976 MB (~2 GiB)**, consistente con la configuración objetivo del enunciado.
 - Generador de carga: misma laptop del equipo, fuera de las VMs de la aplicación.
-- Base de datos: Cloud SQL PostgreSQL (`mooc-db-instance`) — `TODO tier/vCPU/RAM`
-- Versión de k6: `TODO — correr "k6 version" y pegar aquí`
+- Base de datos: Cloud SQL PostgreSQL (`mooc-db-instance`) — tier **`db-custom-2-8192`** (2 vCPU, 8 GiB RAM), 20 GiB disco, zonal (sin réplicas de lectura, como pide el enunciado).
+- Versión de k6: **`k6.exe v2.3.0` (commit e088784614, go1.26.8, windows/amd64)**
 
 ### Resultados por nivel
 
@@ -183,24 +205,35 @@ Ejecutados con `loadtests/k6/run_escenario2_niveles.ps1` (subida y consumo suben
 
 \* Pico puntual de una sola muestra de 5s (probablemente una ráfaga de requests concurrentes atendidas en más de un core); el resto de la corrida se mantiene por debajo del 30%.
 
+**Infraestructura — Worker Server y Cloud SQL** (Cloud Monitoring, retroactivo, cruzado por ventana de tiempo de cada nivel — `loadtests/results/escenario2/infra/`):
+
+| Nivel | CPU Worker Server (avg/max %) | CPU Cloud SQL (avg/max %) | Conexiones activas Cloud SQL (avg/max) |
+|---|---|---|---|
+| Línea base | 11.7 / 13.9 | 5.6 / 5.6 | 8.0 / 8 |
+| Nivel 1 | 26.3 / 31.9 | 5.9 / 6.2 | 8.0 / 8 |
+| Nivel 2 | 40.3 / 48.3 | 7.4 / 7.9 | 9.0 / 9 |
+| Nivel 3 | 71.8 / 81.7 | 9.1 / 9.8 | 9.3 / 10 |
+| Repetición | 43.6 / 84.1 | 7.1 / 10.3 | 9.0 / 9 |
+
+**Hallazgo clave:** a diferencia de Escenario 1, acá **sí hay un componente que crece claramente con la carga hasta niveles altos de uso real**: Worker Server pasa de 11.7% a 71.8-84.1% de CPU (línea base → Nivel 3/Repetición), mientras Web Server (<30%) y Cloud SQL (<10%) se mantienen holgados en todo momento. Esto confirma con medición directa —no solo por inferencia de `media_processing_duration`— que el pipeline de transcodificación en Worker Server es el primer componente en acercarse a su límite.
+
 **Throughput y checks:** 0 fallas HTTP y 0 checks fallidos en los 5 niveles (Línea base: 1040 reqs/7.1 req/s → Repetición: 46383 reqs/228 req/s). `media_processing_timeouts=0` y `media_segment_download_failures=0` en todos los niveles — ningún job quedó atascado ni ningún segmento HLS falló al descargar.
 
 ### Análisis por punto exigido por el enunciado
 
 **Carga directa (URLs firmadas):** `create_resource` (autorización + URL firmada) se mantiene 112-120ms avg en todos los niveles — la API nunca es el cuello de botella de la carga. `upload_put` (transferencia directa a almacenamiento, no pasa por la API) es el paso más lento del flujo de subida (366-445ms avg), consistente con ser transferencia de archivo real contra el object storage, no cómputo de la API.
 
-**Procesamiento asíncrono:** el tiempo desde carga completa hasta `available` crece con la carga — de ~3.4s (línea base) a ~5.4s avg / 9.5s p99 (Nivel 3) — pero se mantiene muy por debajo del umbral de referencia (45s) en todos los niveles. El crecimiento no es proporcional al de `PLAYBACK_VUS`/`UPLOAD_VUS` (que se multiplica x30), lo que sugiere que la concurrencia de workers (mantenida fija a propósito) empieza a ser el limitante del pipeline de transcodificación antes que la API o la base de datos — pero **no se monitoreó Worker Server** para confirmarlo con CPU/memoria real (ver limitaciones).
+**Procesamiento asíncrono:** el tiempo desde carga completa hasta `available` crece con la carga — de ~3.4s (línea base) a ~5.4s avg / 9.5s p99 (Nivel 3) — pero se mantiene muy por debajo del umbral de referencia (45s) en todos los niveles. El crecimiento no es proporcional al de `PLAYBACK_VUS`/`UPLOAD_VUS` (que se multiplica x30), lo que sugiere que la concurrencia de workers (mantenida fija a propósito) empieza a ser el limitante del pipeline de transcodificación antes que la API o la base de datos — confirmado con CPU real de Worker Server (11.7% → 71.8-84.1% entre línea base y Nivel 3/Repetición, ver tabla de infraestructura arriba).
 
 **Trabajos completados, reintentos y cola:** 0 timeouts y 0 rechazos de encolado (`media_enqueue_rejected`, sin muestras) en los 5 niveles — todo lo que se aceptó a la API terminó en `available`. No se observó profundidad ni antigüedad de la cola de asynq directamente (no hay panel de asynq monitoreado en esta entrega); la métrica usada como proxy es `media_processing_duration`.
 
 **Consumo HLS:** `manifest` y `segment` se mantienen estables y dentro de umbral en los 5 niveles (segment p95 608-689ms contra umbral de referencia 1000ms), incluso con `PLAYBACK_VUS` en 300. `stream_url` p99 sube de 156ms a ~350-355ms desde Nivel 1 en adelante (polling mientras el video termina de procesarse), pero su p95 se mantiene bajo 130ms — el p99 alto es exactamente el patrón esperado del pequeño porcentaje de reproducciones que arrancan justo cuando el video todavía se está transcodificando.
 
-**Componente que limita el flujo:** con los niveles probados (hasta `UPLOAD_VUS=10`/`PLAYBACK_VUS=300`), **no se alcanzó un punto de saturación real** — 0% de error HTTP y CPU de Web Server por debajo del 30% en el peor caso. El primer indicio de límite es el crecimiento de `media_processing_duration` (el pipeline de transcodificación), no la API ni el consumo HLS. Con una CDN delante del almacenamiento de objetos, el tráfico de `manifest`/`segment` (ya el 90%+ de las requests en los niveles altos) dejaría de pasar por la API/almacenamiento directo, liberando esa capacidad para más subida y procesamiento concurrente; más capacidad de procesamiento (más workers o más CPU en Worker Server) atacaría directamente el único componente que mostró crecimiento con la carga.
+**Componente que limita el flujo:** con los niveles probados (hasta `UPLOAD_VUS=10`/`PLAYBACK_VUS=300`), **no se alcanzó un punto de saturación real** — 0% de error HTTP en todos los niveles. Pero ya hay un componente claramente más cargado que el resto: Worker Server llega a 71.8-84.1% de CPU en Nivel 3/Repetición (medido directamente, ver tabla de infraestructura), mientras Web Server se mantiene bajo 30% y Cloud SQL bajo 10%. Con un nivel más de carga (más VUs de subida, que es lo que fuerza más transcodificaciones concurrentes) es esperable que Worker Server sea el primero en saturar. Con una CDN delante del almacenamiento de objetos, el tráfico de `manifest`/`segment` (ya el 90%+ de las requests en los niveles altos) dejaría de pasar por la API/almacenamiento directo, liberando esa capacidad para más subida y procesamiento concurrente; más capacidad de procesamiento (más workers o más CPU en Worker Server) atacaría directamente el único componente que mostró crecimiento real con la carga.
 
 ### Limitaciones del experimento
 
 - **No se alcanzó saturación real** en ningún nivel probado — el máximo reportado (`UPLOAD_VUS=10`, `PLAYBACK_VUS=300`) no corresponde a la capacidad máxima de la plataforma, solo al techo probado en esta entrega.
-- **Worker Server no se monitoreó.** Solo se corrió `monitor_vm.sh` en Web Server; el crecimiento de `media_processing_duration` con la carga es evidencia indirecta de que el pipeline de transcodificación (Worker Server/FFmpeg) es el componente que primero muestra presión, pero no hay CPU/memoria real de esa VM para confirmarlo.
 - **Los 3 perfiles de video son el mismo archivo de origen** (`sample_upload.mp4`, ~90KB/5s) reutilizado 3 veces vía `PLAYBACK_POOL_SIZE=3`, no 3 archivos con duración/tamaño/resolución realmente distintos como pide el enunciado.
 - **No se midió tiempo hasta el primer cuadro ni interrupciones de reproducción con un reproductor real** — las métricas de manifiesto/segmento son peticiones HTTP, no reproducción real.
 - **No se instrumentó la profundidad/antigüedad de la cola de asynq directamente**; se usó `media_processing_duration` como proxy.
@@ -213,4 +246,4 @@ Los dos escenarios apuntan a componentes distintos, así que la evolución tiene
 1. **Escenario 1 (académico): el cuello de botella está aguas abajo de la API** — `catalog`/`enroll`/`heartbeat`/`quiz_start` se degradan juntos y a la par entre Nivel 2 (150 VUs, sano) y Nivel 3 (400 VUs, p95~60s, 5-9% error), lo que apunta al pool de conexiones de la API hacia PostgreSQL o a la propia instancia de Cloud SQL (VM de 2 vCPU) saturándose bajo escritura+lectura concurrente. La medición que respalda esto: los cuatro endpoints comparten el mismo patrón de degradación pese a tener costos de negocio muy distintos (una lectura de catálogo vs. una escritura de heartbeat), lo cual descarta que sea un endpoint particular con una consulta cara. Propuesta: subir el tier de Cloud SQL (más vCPU/conexiones máximas) y/o aumentar el `max_open_conns` del pool de la API, y repetir el Nivel 3 para confirmar si el punto de quiebre se corre hacia arriba.
 2. **Escenario 2 (multimedia): el cuello de botella es el pipeline de transcodificación, no la API ni el consumo HLS** — `media_processing_duration` crece de ~3.4s a ~5.4s avg (9.5s p99) entre línea base y Nivel 3, mientras la API (CPU Web Server <30% en el peor caso) y el consumo HLS (segment p95 estable en ~610-690ms) se mantienen sanos con 30x más carga. La medición que respalda esto: el único número que crece con la carga es justamente el que depende de la concurrencia fija de Worker Server. Propuesta: aumentar la concurrencia de workers/CPU de Worker Server y, para el consumo (ya el grueso del tráfico en los niveles altos), poner una CDN delante del almacenamiento de objetos — libera esa capacidad de la API/almacenamiento directo para más subida y procesamiento concurrente.
 
-Ambas propuestas quedan pendientes de validar con una corrida de confirmación (fuera del alcance de esta entrega); ver limitaciones de cada escenario para lo que falta medir antes de tomarlas como definitivas (infraestructura de PostgreSQL/Cloud SQL y de Worker Server, específicamente).
+Ambas propuestas quedan pendientes de validar con una corrida de confirmación (fuera del alcance de esta entrega); ver limitaciones de cada escenario para lo que falta medir antes de tomarlas como definitivas (sobre todo memoria/disco/red, y granularidad más fina que el minuto de Cloud Monitoring).
