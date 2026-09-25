@@ -1,0 +1,696 @@
+
+         /\      Grafana   /ÔÇ¥ÔÇ¥/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ÔÇ¥ÔÇ¥\ 
+  /          \   |   (  |  (ÔÇ¥)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: C:\code\proyecto-plataforma-mooc\loadtests\k6\media-load-test.js
+        output: -
+
+     scenarios: (100.00%) 2 scenarios, 11 max VUs, 2m35s max duration (incl. graceful stop):
+              * subida_multimedia: 1 looping VUs for 2m0s (exec: subirVideo, gracefulStop: 30s)
+              * consumo_hls: 10 looping VUs for 2m0s (exec: reproducirHLS, startTime: 5s, gracefulStop: 30s)
+
+time="2026-09-25T14:19:17-05:00" level=info msg="Preparando pool de 3 video(s) para el escenario de reproduccion..." source=console
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+time="2026-09-25T14:19:22-05:00" level=info msg="Setup: video 1/3 listo (d063beee-ba78-46d0-bf4d-5e05a372235d)." source=console
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+time="2026-09-25T14:19:29-05:00" level=info msg="Setup: video 2/3 listo (9cb5dfe1-dfab-4e87-ad2b-10179232bfb8)." source=console
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+
+Run                 [ 100% ] setup()
+subida_multimedia   [   0% ]
+consumo_hls         [   0% ]
+time="2026-09-25T14:19:33-05:00" level=info msg="Setup: video 3/3 listo (4327a431-21b4-4993-904d-b7a7cf960330)." source=console
+time="2026-09-25T14:19:33-05:00" level=info msg="Setup listo: 3/3 video(s) en el pool de reproduccion." source=console
+
+running (0m17.0s), 01/11 VUs, 0 complete and 0 interrupted iterations
+subida_multimedia   [   1% ] 1 VUs    0m01.0s/2m0s
+consumo_hls       ÔÇó [   0% ] waiting  4.0s
+
+running (0m18.0s), 01/11 VUs, 0 complete and 0 interrupted iterations
+subida_multimedia   [   2% ] 1 VUs    0m02.0s/2m0s
+consumo_hls       ÔÇó [   0% ] waiting  3.0s
+
+running (0m19.0s), 01/11 VUs, 0 complete and 0 interrupted iterations
+subida_multimedia   [   2% ] 1 VUs    0m03.0s/2m0s
+consumo_hls       ÔÇó [   0% ] waiting  2.0s
+
+running (0m20.0s), 01/11 VUs, 0 complete and 0 interrupted iterations
+subida_multimedia   [   3% ] 1 VUs    0m04.0s/2m0s
+consumo_hls       ÔÇó [   0% ] waiting  1.0s
+
+running (0m21.0s), 01/11 VUs, 0 complete and 0 interrupted iterations
+subida_multimedia   [   4% ] 1 VUs    0m05.0s/2m0s
+consumo_hls       ÔÇó [   0% ] waiting  0.0s
+
+running (0m22.0s), 11/11 VUs, 0 complete and 0 interrupted iterations
+subida_multimedia   [   5% ] 1 VUs   0m06.0s/2m0s
+consumo_hls         [   1% ] 10 VUs  0m01.0s/2m0s
+
+running (0m23.0s), 11/11 VUs, 0 complete and 0 interrupted iterations
+subida_multimedia   [   6% ] 1 VUs   0m07.0s/2m0s
+consumo_hls         [   2% ] 10 VUs  0m02.0s/2m0s
+
+running (0m24.0s), 11/11 VUs, 1 complete and 0 interrupted iterations
+subida_multimedia   [   7% ] 1 VUs   0m08.0s/2m0s
+consumo_hls         [   2% ] 10 VUs  0m03.0s/2m0s
+
+running (0m25.0s), 11/11 VUs, 2 complete and 0 interrupted iterations
+subida_multimedia   [   7% ] 1 VUs   0m09.0s/2m0s
+consumo_hls         [   3% ] 10 VUs  0m04.0s/2m0s
+
+running (0m26.0s), 11/11 VUs, 7 complete and 0 interrupted iterations
+subida_multimedia   [   8% ] 1 VUs   0m10.0s/2m0s
+consumo_hls         [   4% ] 10 VUs  0m05.0s/2m0s
+
+running (0m27.0s), 11/11 VUs, 7 complete and 0 interrupted iterations
+subida_multimedia   [   9% ] 1 VUs   0m11.0s/2m0s
+consumo_hls         [   5% ] 10 VUs  0m06.0s/2m0s
+
+running (0m28.0s), 11/11 VUs, 10 complete and 0 interrupted iterations
+subida_multimedia   [  10% ] 1 VUs   0m12.0s/2m0s
+consumo_hls         [   6% ] 10 VUs  0m07.0s/2m0s
+
+running (0m29.0s), 11/11 VUs, 12 complete and 0 interrupted iterations
+subida_multimedia   [  11% ] 1 VUs   0m13.0s/2m0s
+consumo_hls         [   7% ] 10 VUs  0m08.0s/2m0s
+
+running (0m30.0s), 11/11 VUs, 12 complete and 0 interrupted iterations
+subida_multimedia   [  12% ] 1 VUs   0m14.0s/2m0s
+consumo_hls         [   7% ] 10 VUs  0m09.0s/2m0s
+
+running (0m31.0s), 11/11 VUs, 12 complete and 0 interrupted iterations
+subida_multimedia   [  12% ] 1 VUs   0m15.0s/2m0s
+consumo_hls         [   8% ] 10 VUs  0m10.0s/2m0s
+
+running (0m32.0s), 11/11 VUs, 17 complete and 0 interrupted iterations
+subida_multimedia   [  13% ] 1 VUs   0m16.0s/2m0s
+consumo_hls         [   9% ] 10 VUs  0m11.0s/2m0s
+
+running (0m33.0s), 11/11 VUs, 19 complete and 0 interrupted iterations
+subida_multimedia   [  14% ] 1 VUs   0m17.0s/2m0s
+consumo_hls         [  10% ] 10 VUs  0m12.0s/2m0s
+
+running (0m34.0s), 11/11 VUs, 23 complete and 0 interrupted iterations
+subida_multimedia   [  15% ] 1 VUs   0m18.0s/2m0s
+consumo_hls         [  11% ] 10 VUs  0m13.0s/2m0s
+
+running (0m35.0s), 11/11 VUs, 24 complete and 0 interrupted iterations
+subida_multimedia   [  16% ] 1 VUs   0m19.0s/2m0s
+consumo_hls         [  12% ] 10 VUs  0m14.0s/2m0s
+
+running (0m36.0s), 11/11 VUs, 25 complete and 0 interrupted iterations
+subida_multimedia   [  17% ] 1 VUs   0m20.0s/2m0s
+consumo_hls         [  12% ] 10 VUs  0m15.0s/2m0s
+
+running (0m37.0s), 11/11 VUs, 27 complete and 0 interrupted iterations
+subida_multimedia   [  17% ] 1 VUs   0m21.0s/2m0s
+consumo_hls         [  13% ] 10 VUs  0m16.0s/2m0s
+
+running (0m38.0s), 11/11 VUs, 28 complete and 0 interrupted iterations
+subida_multimedia   [  18% ] 1 VUs   0m22.0s/2m0s
+consumo_hls         [  14% ] 10 VUs  0m17.0s/2m0s
+
+running (0m39.0s), 11/11 VUs, 31 complete and 0 interrupted iterations
+subida_multimedia   [  19% ] 1 VUs   0m23.0s/2m0s
+consumo_hls         [  15% ] 10 VUs  0m18.0s/2m0s
+
+running (0m40.0s), 11/11 VUs, 32 complete and 0 interrupted iterations
+subida_multimedia   [  20% ] 1 VUs   0m24.0s/2m0s
+consumo_hls         [  16% ] 10 VUs  0m19.0s/2m0s
+
+running (0m41.0s), 11/11 VUs, 36 complete and 0 interrupted iterations
+subida_multimedia   [  21% ] 1 VUs   0m25.0s/2m0s
+consumo_hls         [  17% ] 10 VUs  0m20.0s/2m0s
+
+running (0m42.0s), 11/11 VUs, 37 complete and 0 interrupted iterations
+subida_multimedia   [  22% ] 1 VUs   0m26.0s/2m0s
+consumo_hls         [  17% ] 10 VUs  0m21.0s/2m0s
+
+running (0m43.0s), 11/11 VUs, 38 complete and 0 interrupted iterations
+subida_multimedia   [  22% ] 1 VUs   0m27.0s/2m0s
+consumo_hls         [  18% ] 10 VUs  0m22.0s/2m0s
+
+running (0m44.0s), 11/11 VUs, 40 complete and 0 interrupted iterations
+subida_multimedia   [  23% ] 1 VUs   0m28.0s/2m0s
+consumo_hls         [  19% ] 10 VUs  0m23.0s/2m0s
+
+running (0m45.0s), 11/11 VUs, 43 complete and 0 interrupted iterations
+subida_multimedia   [  24% ] 1 VUs   0m29.0s/2m0s
+consumo_hls         [  20% ] 10 VUs  0m24.0s/2m0s
+
+running (0m46.0s), 11/11 VUs, 47 complete and 0 interrupted iterations
+subida_multimedia   [  25% ] 1 VUs   0m30.0s/2m0s
+consumo_hls         [  21% ] 10 VUs  0m25.0s/2m0s
+
+running (0m47.0s), 11/11 VUs, 47 complete and 0 interrupted iterations
+subida_multimedia   [  26% ] 1 VUs   0m31.0s/2m0s
+consumo_hls         [  22% ] 10 VUs  0m26.0s/2m0s
+
+running (0m48.0s), 11/11 VUs, 48 complete and 0 interrupted iterations
+subida_multimedia   [  27% ] 1 VUs   0m32.0s/2m0s
+consumo_hls         [  22% ] 10 VUs  0m27.0s/2m0s
+
+running (0m49.0s), 11/11 VUs, 49 complete and 0 interrupted iterations
+subida_multimedia   [  27% ] 1 VUs   0m33.0s/2m0s
+consumo_hls         [  23% ] 10 VUs  0m28.0s/2m0s
+
+running (0m50.0s), 11/11 VUs, 52 complete and 0 interrupted iterations
+subida_multimedia   [  28% ] 1 VUs   0m34.0s/2m0s
+consumo_hls         [  24% ] 10 VUs  0m29.0s/2m0s
+
+running (0m51.0s), 11/11 VUs, 55 complete and 0 interrupted iterations
+subida_multimedia   [  29% ] 1 VUs   0m35.0s/2m0s
+consumo_hls         [  25% ] 10 VUs  0m30.0s/2m0s
+
+running (0m52.0s), 11/11 VUs, 58 complete and 0 interrupted iterations
+subida_multimedia   [  30% ] 1 VUs   0m36.0s/2m0s
+consumo_hls         [  26% ] 10 VUs  0m31.0s/2m0s
+
+running (0m53.0s), 11/11 VUs, 60 complete and 0 interrupted iterations
+subida_multimedia   [  31% ] 1 VUs   0m37.0s/2m0s
+consumo_hls         [  27% ] 10 VUs  0m32.0s/2m0s
+
+running (0m54.0s), 11/11 VUs, 61 complete and 0 interrupted iterations
+subida_multimedia   [  32% ] 1 VUs   0m38.0s/2m0s
+consumo_hls         [  27% ] 10 VUs  0m33.0s/2m0s
+
+running (0m55.0s), 11/11 VUs, 62 complete and 0 interrupted iterations
+subida_multimedia   [  32% ] 1 VUs   0m39.0s/2m0s
+consumo_hls         [  28% ] 10 VUs  0m34.0s/2m0s
+
+running (0m56.0s), 11/11 VUs, 62 complete and 0 interrupted iterations
+subida_multimedia   [  33% ] 1 VUs   0m40.0s/2m0s
+consumo_hls         [  29% ] 10 VUs  0m35.0s/2m0s
+
+running (0m57.0s), 11/11 VUs, 68 complete and 0 interrupted iterations
+subida_multimedia   [  34% ] 1 VUs   0m41.0s/2m0s
+consumo_hls         [  30% ] 10 VUs  0m36.0s/2m0s
+
+running (0m58.0s), 11/11 VUs, 70 complete and 0 interrupted iterations
+subida_multimedia   [  35% ] 1 VUs   0m42.0s/2m0s
+consumo_hls         [  31% ] 10 VUs  0m37.0s/2m0s
+
+running (0m59.0s), 11/11 VUs, 71 complete and 0 interrupted iterations
+subida_multimedia   [  36% ] 1 VUs   0m43.0s/2m0s
+consumo_hls         [  32% ] 10 VUs  0m38.0s/2m0s
+
+running (1m00.0s), 11/11 VUs, 73 complete and 0 interrupted iterations
+subida_multimedia   [  37% ] 1 VUs   0m44.0s/2m0s
+consumo_hls         [  32% ] 10 VUs  0m39.0s/2m0s
+
+running (1m01.0s), 11/11 VUs, 76 complete and 0 interrupted iterations
+subida_multimedia   [  37% ] 1 VUs   0m45.0s/2m0s
+consumo_hls         [  33% ] 10 VUs  0m40.0s/2m0s
+
+running (1m02.0s), 11/11 VUs, 77 complete and 0 interrupted iterations
+subida_multimedia   [  38% ] 1 VUs   0m46.0s/2m0s
+consumo_hls         [  34% ] 10 VUs  0m41.0s/2m0s
+
+running (1m03.0s), 11/11 VUs, 81 complete and 0 interrupted iterations
+subida_multimedia   [  39% ] 1 VUs   0m47.0s/2m0s
+consumo_hls         [  35% ] 10 VUs  0m42.0s/2m0s
+
+running (1m04.0s), 11/11 VUs, 81 complete and 0 interrupted iterations
+subida_multimedia   [  40% ] 1 VUs   0m48.0s/2m0s
+consumo_hls         [  36% ] 10 VUs  0m43.0s/2m0s
+
+running (1m05.0s), 11/11 VUs, 81 complete and 0 interrupted iterations
+subida_multimedia   [  41% ] 1 VUs   0m49.0s/2m0s
+consumo_hls         [  37% ] 10 VUs  0m44.0s/2m0s
+
+running (1m06.0s), 11/11 VUs, 84 complete and 0 interrupted iterations
+subida_multimedia   [  42% ] 1 VUs   0m50.0s/2m0s
+consumo_hls         [  37% ] 10 VUs  0m45.0s/2m0s
+
+running (1m07.0s), 11/11 VUs, 87 complete and 0 interrupted iterations
+subida_multimedia   [  42% ] 1 VUs   0m51.0s/2m0s
+consumo_hls         [  38% ] 10 VUs  0m46.0s/2m0s
+
+running (1m08.0s), 11/11 VUs, 91 complete and 0 interrupted iterations
+subida_multimedia   [  43% ] 1 VUs   0m52.0s/2m0s
+consumo_hls         [  39% ] 10 VUs  0m47.0s/2m0s
+
+running (1m09.0s), 11/11 VUs, 91 complete and 0 interrupted iterations
+subida_multimedia   [  44% ] 1 VUs   0m53.0s/2m0s
+consumo_hls         [  40% ] 10 VUs  0m48.0s/2m0s
+
+running (1m10.0s), 11/11 VUs, 93 complete and 0 interrupted iterations
+subida_multimedia   [  45% ] 1 VUs   0m54.0s/2m0s
+consumo_hls         [  41% ] 10 VUs  0m49.0s/2m0s
+
+running (1m11.0s), 11/11 VUs, 93 complete and 0 interrupted iterations
+subida_multimedia   [  46% ] 1 VUs   0m55.0s/2m0s
+consumo_hls         [  42% ] 10 VUs  0m50.0s/2m0s
+
+running (1m12.0s), 11/11 VUs, 96 complete and 0 interrupted iterations
+subida_multimedia   [  47% ] 1 VUs   0m56.0s/2m0s
+consumo_hls         [  42% ] 10 VUs  0m51.0s/2m0s
+
+running (1m13.0s), 11/11 VUs, 98 complete and 0 interrupted iterations
+subida_multimedia   [  47% ] 1 VUs   0m57.0s/2m0s
+consumo_hls         [  43% ] 10 VUs  0m52.0s/2m0s
+
+running (1m14.0s), 11/11 VUs, 102 complete and 0 interrupted iterations
+subida_multimedia   [  48% ] 1 VUs   0m58.0s/2m0s
+consumo_hls         [  44% ] 10 VUs  0m53.0s/2m0s
+
+running (1m15.0s), 11/11 VUs, 105 complete and 0 interrupted iterations
+subida_multimedia   [  49% ] 1 VUs   0m59.0s/2m0s
+consumo_hls         [  45% ] 10 VUs  0m54.0s/2m0s
+
+running (1m16.0s), 11/11 VUs, 105 complete and 0 interrupted iterations
+subida_multimedia   [  50% ] 1 VUs   1m00.0s/2m0s
+consumo_hls         [  46% ] 10 VUs  0m55.0s/2m0s
+
+running (1m17.0s), 11/11 VUs, 105 complete and 0 interrupted iterations
+subida_multimedia   [  51% ] 1 VUs   1m01.0s/2m0s
+consumo_hls         [  47% ] 10 VUs  0m56.0s/2m0s
+
+running (1m18.0s), 11/11 VUs, 107 complete and 0 interrupted iterations
+subida_multimedia   [  52% ] 1 VUs   1m02.0s/2m0s
+consumo_hls         [  47% ] 10 VUs  0m57.0s/2m0s
+
+running (1m19.0s), 11/11 VUs, 111 complete and 0 interrupted iterations
+subida_multimedia   [  52% ] 1 VUs   1m03.0s/2m0s
+consumo_hls         [  48% ] 10 VUs  0m58.0s/2m0s
+
+running (1m20.0s), 11/11 VUs, 114 complete and 0 interrupted iterations
+subida_multimedia   [  53% ] 1 VUs   1m04.0s/2m0s
+consumo_hls         [  49% ] 10 VUs  0m59.0s/2m0s
+
+running (1m21.0s), 11/11 VUs, 117 complete and 0 interrupted iterations
+subida_multimedia   [  54% ] 1 VUs   1m05.0s/2m0s
+consumo_hls         [  50% ] 10 VUs  1m00.0s/2m0s
+
+running (1m22.0s), 11/11 VUs, 119 complete and 0 interrupted iterations
+subida_multimedia   [  55% ] 1 VUs   1m06.0s/2m0s
+consumo_hls         [  51% ] 10 VUs  1m01.0s/2m0s
+
+running (1m23.0s), 11/11 VUs, 121 complete and 0 interrupted iterations
+subida_multimedia   [  56% ] 1 VUs   1m07.0s/2m0s
+consumo_hls         [  52% ] 10 VUs  1m02.0s/2m0s
+
+running (1m24.0s), 11/11 VUs, 122 complete and 0 interrupted iterations
+subida_multimedia   [  57% ] 1 VUs   1m08.0s/2m0s
+consumo_hls         [  52% ] 10 VUs  1m03.0s/2m0s
+
+running (1m25.0s), 11/11 VUs, 123 complete and 0 interrupted iterations
+subida_multimedia   [  57% ] 1 VUs   1m09.0s/2m0s
+consumo_hls         [  53% ] 10 VUs  1m04.0s/2m0s
+
+running (1m26.0s), 11/11 VUs, 127 complete and 0 interrupted iterations
+subida_multimedia   [  58% ] 1 VUs   1m10.0s/2m0s
+consumo_hls         [  54% ] 10 VUs  1m05.0s/2m0s
+
+running (1m27.0s), 11/11 VUs, 128 complete and 0 interrupted iterations
+subida_multimedia   [  59% ] 1 VUs   1m11.0s/2m0s
+consumo_hls         [  55% ] 10 VUs  1m06.0s/2m0s
+
+running (1m28.0s), 11/11 VUs, 129 complete and 0 interrupted iterations
+subida_multimedia   [  60% ] 1 VUs   1m12.0s/2m0s
+consumo_hls         [  56% ] 10 VUs  1m07.0s/2m0s
+
+running (1m29.0s), 11/11 VUs, 131 complete and 0 interrupted iterations
+subida_multimedia   [  61% ] 1 VUs   1m13.0s/2m0s
+consumo_hls         [  57% ] 10 VUs  1m08.0s/2m0s
+
+running (1m30.0s), 11/11 VUs, 134 complete and 0 interrupted iterations
+subida_multimedia   [  62% ] 1 VUs   1m14.0s/2m0s
+consumo_hls         [  57% ] 10 VUs  1m09.0s/2m0s
+
+running (1m31.0s), 11/11 VUs, 137 complete and 0 interrupted iterations
+subida_multimedia   [  62% ] 1 VUs   1m15.0s/2m0s
+consumo_hls         [  58% ] 10 VUs  1m10.0s/2m0s
+
+running (1m32.0s), 11/11 VUs, 138 complete and 0 interrupted iterations
+subida_multimedia   [  63% ] 1 VUs   1m16.0s/2m0s
+consumo_hls         [  59% ] 10 VUs  1m11.0s/2m0s
+
+running (1m33.0s), 11/11 VUs, 140 complete and 0 interrupted iterations
+subida_multimedia   [  64% ] 1 VUs   1m17.0s/2m0s
+consumo_hls         [  60% ] 10 VUs  1m12.0s/2m0s
+
+running (1m34.0s), 11/11 VUs, 140 complete and 0 interrupted iterations
+subida_multimedia   [  65% ] 1 VUs   1m18.0s/2m0s
+consumo_hls         [  61% ] 10 VUs  1m13.0s/2m0s
+
+running (1m35.0s), 11/11 VUs, 143 complete and 0 interrupted iterations
+subida_multimedia   [  66% ] 1 VUs   1m19.0s/2m0s
+consumo_hls         [  62% ] 10 VUs  1m14.0s/2m0s
+
+running (1m36.0s), 11/11 VUs, 145 complete and 0 interrupted iterations
+subida_multimedia   [  67% ] 1 VUs   1m20.0s/2m0s
+consumo_hls         [  62% ] 10 VUs  1m15.0s/2m0s
+
+running (1m37.0s), 11/11 VUs, 148 complete and 0 interrupted iterations
+subida_multimedia   [  67% ] 1 VUs   1m21.0s/2m0s
+consumo_hls         [  63% ] 10 VUs  1m16.0s/2m0s
+
+running (1m38.0s), 11/11 VUs, 150 complete and 0 interrupted iterations
+subida_multimedia   [  68% ] 1 VUs   1m22.0s/2m0s
+consumo_hls         [  64% ] 10 VUs  1m17.0s/2m0s
+
+running (1m39.0s), 11/11 VUs, 152 complete and 0 interrupted iterations
+subida_multimedia   [  69% ] 1 VUs   1m23.0s/2m0s
+consumo_hls         [  65% ] 10 VUs  1m18.0s/2m0s
+
+running (1m40.0s), 11/11 VUs, 153 complete and 0 interrupted iterations
+subida_multimedia   [  70% ] 1 VUs   1m24.0s/2m0s
+consumo_hls         [  66% ] 10 VUs  1m19.0s/2m0s
+
+running (1m41.0s), 11/11 VUs, 155 complete and 0 interrupted iterations
+subida_multimedia   [  71% ] 1 VUs   1m25.0s/2m0s
+consumo_hls         [  67% ] 10 VUs  1m20.0s/2m0s
+
+running (1m42.0s), 11/11 VUs, 156 complete and 0 interrupted iterations
+subida_multimedia   [  72% ] 1 VUs   1m26.0s/2m0s
+consumo_hls         [  67% ] 10 VUs  1m21.0s/2m0s
+
+running (1m43.0s), 11/11 VUs, 161 complete and 0 interrupted iterations
+subida_multimedia   [  72% ] 1 VUs   1m27.0s/2m0s
+consumo_hls         [  68% ] 10 VUs  1m22.0s/2m0s
+
+running (1m44.0s), 11/11 VUs, 163 complete and 0 interrupted iterations
+subida_multimedia   [  73% ] 1 VUs   1m28.0s/2m0s
+consumo_hls         [  69% ] 10 VUs  1m23.0s/2m0s
+
+running (1m45.0s), 11/11 VUs, 164 complete and 0 interrupted iterations
+subida_multimedia   [  74% ] 1 VUs   1m29.0s/2m0s
+consumo_hls         [  70% ] 10 VUs  1m24.0s/2m0s
+
+running (1m46.0s), 11/11 VUs, 165 complete and 0 interrupted iterations
+subida_multimedia   [  75% ] 1 VUs   1m30.0s/2m0s
+consumo_hls         [  71% ] 10 VUs  1m25.0s/2m0s
+
+running (1m47.0s), 11/11 VUs, 167 complete and 0 interrupted iterations
+subida_multimedia   [  76% ] 1 VUs   1m31.0s/2m0s
+consumo_hls         [  72% ] 10 VUs  1m26.0s/2m0s
+
+running (1m48.0s), 11/11 VUs, 172 complete and 0 interrupted iterations
+subida_multimedia   [  77% ] 1 VUs   1m32.0s/2m0s
+consumo_hls         [  72% ] 10 VUs  1m27.0s/2m0s
+
+running (1m49.0s), 11/11 VUs, 175 complete and 0 interrupted iterations
+subida_multimedia   [  77% ] 1 VUs   1m33.0s/2m0s
+consumo_hls         [  73% ] 10 VUs  1m28.0s/2m0s
+
+running (1m50.0s), 11/11 VUs, 175 complete and 0 interrupted iterations
+subida_multimedia   [  78% ] 1 VUs   1m34.0s/2m0s
+consumo_hls         [  74% ] 10 VUs  1m29.0s/2m0s
+
+running (1m51.0s), 11/11 VUs, 176 complete and 0 interrupted iterations
+subida_multimedia   [  79% ] 1 VUs   1m35.0s/2m0s
+consumo_hls         [  75% ] 10 VUs  1m30.0s/2m0s
+
+running (1m52.0s), 11/11 VUs, 178 complete and 0 interrupted iterations
+subida_multimedia   [  80% ] 1 VUs   1m36.0s/2m0s
+consumo_hls         [  76% ] 10 VUs  1m31.0s/2m0s
+
+running (1m53.0s), 11/11 VUs, 179 complete and 0 interrupted iterations
+subida_multimedia   [  81% ] 1 VUs   1m37.0s/2m0s
+consumo_hls         [  77% ] 10 VUs  1m32.0s/2m0s
+
+running (1m54.0s), 11/11 VUs, 184 complete and 0 interrupted iterations
+subida_multimedia   [  82% ] 1 VUs   1m38.0s/2m0s
+consumo_hls         [  77% ] 10 VUs  1m33.0s/2m0s
+
+running (1m55.0s), 11/11 VUs, 188 complete and 0 interrupted iterations
+subida_multimedia   [  82% ] 1 VUs   1m39.0s/2m0s
+consumo_hls         [  78% ] 10 VUs  1m34.0s/2m0s
+
+running (1m56.0s), 11/11 VUs, 189 complete and 0 interrupted iterations
+subida_multimedia   [  83% ] 1 VUs   1m40.0s/2m0s
+consumo_hls         [  79% ] 10 VUs  1m35.0s/2m0s
+
+running (1m57.0s), 11/11 VUs, 189 complete and 0 interrupted iterations
+subida_multimedia   [  84% ] 1 VUs   1m41.0s/2m0s
+consumo_hls         [  80% ] 10 VUs  1m36.0s/2m0s
+
+running (1m58.0s), 11/11 VUs, 193 complete and 0 interrupted iterations
+subida_multimedia   [  85% ] 1 VUs   1m42.0s/2m0s
+consumo_hls         [  81% ] 10 VUs  1m37.0s/2m0s
+
+running (1m59.0s), 11/11 VUs, 194 complete and 0 interrupted iterations
+subida_multimedia   [  86% ] 1 VUs   1m43.0s/2m0s
+consumo_hls         [  82% ] 10 VUs  1m38.0s/2m0s
+
+running (2m00.0s), 11/11 VUs, 197 complete and 0 interrupted iterations
+subida_multimedia   [  87% ] 1 VUs   1m44.0s/2m0s
+consumo_hls         [  82% ] 10 VUs  1m39.0s/2m0s
+
+running (2m01.0s), 11/11 VUs, 198 complete and 0 interrupted iterations
+subida_multimedia   [  87% ] 1 VUs   1m45.0s/2m0s
+consumo_hls         [  83% ] 10 VUs  1m40.0s/2m0s
+
+running (2m02.0s), 11/11 VUs, 202 complete and 0 interrupted iterations
+subida_multimedia   [  88% ] 1 VUs   1m46.0s/2m0s
+consumo_hls         [  84% ] 10 VUs  1m41.0s/2m0s
+
+running (2m03.0s), 11/11 VUs, 204 complete and 0 interrupted iterations
+subida_multimedia   [  89% ] 1 VUs   1m47.0s/2m0s
+consumo_hls         [  85% ] 10 VUs  1m42.0s/2m0s
+
+running (2m04.0s), 11/11 VUs, 205 complete and 0 interrupted iterations
+subida_multimedia   [  90% ] 1 VUs   1m48.0s/2m0s
+consumo_hls         [  86% ] 10 VUs  1m43.0s/2m0s
+
+running (2m05.0s), 11/11 VUs, 207 complete and 0 interrupted iterations
+subida_multimedia   [  91% ] 1 VUs   1m49.0s/2m0s
+consumo_hls         [  87% ] 10 VUs  1m44.0s/2m0s
+
+running (2m06.0s), 11/11 VUs, 209 complete and 0 interrupted iterations
+subida_multimedia   [  92% ] 1 VUs   1m50.0s/2m0s
+consumo_hls         [  87% ] 10 VUs  1m45.0s/2m0s
+
+running (2m07.0s), 11/11 VUs, 211 complete and 0 interrupted iterations
+subida_multimedia   [  92% ] 1 VUs   1m51.0s/2m0s
+consumo_hls         [  88% ] 10 VUs  1m46.0s/2m0s
+
+running (2m08.0s), 11/11 VUs, 215 complete and 0 interrupted iterations
+subida_multimedia   [  93% ] 1 VUs   1m52.0s/2m0s
+consumo_hls         [  89% ] 10 VUs  1m47.0s/2m0s
+
+running (2m09.0s), 11/11 VUs, 217 complete and 0 interrupted iterations
+subida_multimedia   [  94% ] 1 VUs   1m53.0s/2m0s
+consumo_hls         [  90% ] 10 VUs  1m48.0s/2m0s
+
+running (2m10.0s), 11/11 VUs, 219 complete and 0 interrupted iterations
+subida_multimedia   [  95% ] 1 VUs   1m54.0s/2m0s
+consumo_hls         [  91% ] 10 VUs  1m49.0s/2m0s
+
+running (2m11.0s), 11/11 VUs, 219 complete and 0 interrupted iterations
+subida_multimedia   [  96% ] 1 VUs   1m55.0s/2m0s
+consumo_hls         [  92% ] 10 VUs  1m50.0s/2m0s
+
+running (2m12.0s), 11/11 VUs, 221 complete and 0 interrupted iterations
+subida_multimedia   [  97% ] 1 VUs   1m56.0s/2m0s
+consumo_hls         [  92% ] 10 VUs  1m51.0s/2m0s
+
+running (2m13.0s), 11/11 VUs, 224 complete and 0 interrupted iterations
+subida_multimedia   [  97% ] 1 VUs   1m57.0s/2m0s
+consumo_hls         [  93% ] 10 VUs  1m52.0s/2m0s
+
+running (2m14.0s), 11/11 VUs, 226 complete and 0 interrupted iterations
+subida_multimedia   [  98% ] 1 VUs   1m58.0s/2m0s
+consumo_hls         [  94% ] 10 VUs  1m53.0s/2m0s
+
+running (2m15.0s), 11/11 VUs, 228 complete and 0 interrupted iterations
+subida_multimedia   [  99% ] 1 VUs   1m59.0s/2m0s
+consumo_hls         [  95% ] 10 VUs  1m54.0s/2m0s
+
+running (2m16.0s), 11/11 VUs, 232 complete and 0 interrupted iterations
+subida_multimedia   [ 100% ] 1 VUs   2m00.0s/2m0s
+consumo_hls         [  96% ] 10 VUs  1m55.0s/2m0s
+
+running (2m17.0s), 11/11 VUs, 235 complete and 0 interrupted iterations
+subida_multimedia Ôåô [ 100% ] 1 VUs   2m0s
+consumo_hls         [  97% ] 10 VUs  1m56.0s/2m0s
+
+running (2m18.0s), 11/11 VUs, 235 complete and 0 interrupted iterations
+subida_multimedia Ôåô [ 100% ] 1 VUs   2m0s
+consumo_hls         [  97% ] 10 VUs  1m57.0s/2m0s
+
+running (2m19.0s), 11/11 VUs, 236 complete and 0 interrupted iterations
+subida_multimedia Ôåô [ 100% ] 1 VUs   2m0s
+consumo_hls         [  98% ] 10 VUs  1m58.0s/2m0s
+
+running (2m20.0s), 11/11 VUs, 237 complete and 0 interrupted iterations
+subida_multimedia Ôåô [ 100% ] 1 VUs   2m0s
+consumo_hls         [  99% ] 10 VUs  1m59.0s/2m0s
+
+running (2m21.0s), 11/11 VUs, 241 complete and 0 interrupted iterations
+subida_multimedia Ôåô [ 100% ] 1 VUs   2m0s
+consumo_hls         [ 100% ] 10 VUs  2m00.0s/2m0s
+
+running (2m22.0s), 07/11 VUs, 245 complete and 0 interrupted iterations
+subida_multimedia Ôåô [ 100% ] 1 VUs   2m0s
+consumo_hls       Ôåô [ 100% ] 10 VUs  2m0s
+
+running (2m23.0s), 06/11 VUs, 246 complete and 0 interrupted iterations
+subida_multimedia Ô£ô [ 100% ] 1 VUs   2m0s
+consumo_hls       Ôåô [ 100% ] 10 VUs  2m0s
+
+running (2m24.0s), 06/11 VUs, 246 complete and 0 interrupted iterations
+subida_multimedia Ô£ô [ 100% ] 1 VUs   2m0s
+consumo_hls       Ôåô [ 100% ] 10 VUs  2m0s
+
+running (2m25.0s), 03/11 VUs, 249 complete and 0 interrupted iterations
+subida_multimedia Ô£ô [ 100% ] 1 VUs   2m0s
+consumo_hls       Ôåô [ 100% ] 10 VUs  2m0s
+
+running (2m26.0s), 01/11 VUs, 251 complete and 0 interrupted iterations
+subida_multimedia Ô£ô [ 100% ] 1 VUs   2m0s
+consumo_hls       Ôåô [ 100% ] 10 VUs  2m0s
+
+
+  Ôûê THRESHOLDS 
+
+    http_req_duration{endpoint:complete_upload}
+    Ô£ô 'p(95)<800' p(95)=214.17ms
+
+    http_req_duration{endpoint:create_resource}
+    Ô£ô 'p(95)<800' p(95)=140ms
+
+    http_req_duration{endpoint:manifest}
+    Ô£ô 'p(95)<600' p(95)=179.58ms
+
+    http_req_duration{endpoint:resume}
+    Ô£ô 'p(95)<400' p(95)=122.62ms
+
+    http_req_duration{endpoint:segment}
+    Ô£ô 'p(95)<1000' p(95)=688.47ms
+
+    http_req_duration{endpoint:stream_url}
+    Ô£ô 'p(95)<500' p(95)=125.37ms
+
+    http_req_duration{endpoint:upload_put}
+    Ô£ô 'p(95)<5000' p(95)=546.55ms
+
+    http_req_failed
+    Ô£ô 'rate<0.02' rate=0.00%
+
+    media_processing_duration
+    Ô£ô 'p(95)<45000' p(95)=3.56s
+
+    media_processing_timeouts
+    Ô£ô 'count==0' count=0
+
+    media_segment_download_failures
+    Ô£ô 'count==0' count=0
+
+
+  Ôûê TOTAL RESULTS 
+
+    checks_total.......: 1237    8.449857/s
+    checks_succeeded...: 100.00% 1237 out of 1237
+    checks_failed......: 0.00%   0 out of 1237
+
+    Ô£ô creacion de recurso responde 201
+    Ô£ô subida directa a almacenamiento responde 2xx
+    Ô£ô complete-upload responde 200/502
+    Ô£ô stream-url responde 200
+    Ô£ô manifiesto HLS responde 200
+    Ô£ô manifiesto trae Content-Type de HLS
+    Ô£ô segmento HLS responde 200
+    Ô£ô resume responde 200
+
+    CUSTOM
+    media_manifest_duration...........: avg=155.97ms min=134.02ms med=152.97ms p(90)=171.75ms p(95)=179.58ms p(99)=211.94ms max=246.84ms
+    media_processing_duration.........: avg=3.39s    min=3.22s    med=3.22s    p(90)=3.23s    p(95)=3.56s    p(99)=5.79s    max=6.35s   
+    media_processing_timeouts.........: 0        0/s
+    media_segment_bytes_downloaded....: 30128704 205806.990533/s
+    media_segment_download_failures...: 0        0/s
+    media_segment_duration............: avg=529.02ms min=470.48ms med=493.69ms p(90)=603.71ms p(95)=688.47ms p(99)=1.19s    max=1.61s   
+    media_upload_put_duration.........: avg=445.44ms min=389.49ms med=402.41ms p(90)=459.72ms p(95)=546.55ms p(99)=887.02ms max=972.13ms
+
+    HTTP
+    http_req_duration.................: avg=225.49ms min=104.6ms  med=135.73ms p(90)=496.67ms p(95)=510.35ms p(99)=708.78ms max=1.61s   
+      { endpoint:complete_upload }....: avg=163.87ms min=142.14ms med=155.31ms p(90)=179.47ms p(95)=214.17ms p(99)=268.94ms max=282.64ms
+      { endpoint:create_resource }....: avg=119.74ms min=111.35ms med=116.47ms p(90)=121.88ms p(95)=140ms    p(99)=172.85ms max=181.07ms
+      { endpoint:manifest }...........: avg=155.97ms min=134.02ms med=152.97ms p(90)=171.75ms p(95)=179.58ms p(99)=211.94ms max=246.84ms
+      { endpoint:resume }.............: avg=114.4ms  min=104.6ms  med=113.64ms p(90)=119.42ms p(95)=122.62ms p(99)=129.8ms  max=135.97ms
+      { endpoint:segment }............: avg=529.02ms min=470.48ms med=493.69ms p(90)=603.71ms p(95)=688.47ms p(99)=1.19s    max=1.61s   
+      { endpoint:stream_url }.........: avg=116.38ms min=107.35ms med=114.64ms p(90)=121.14ms p(95)=125.37ms p(99)=155.51ms max=176.18ms
+      { endpoint:upload_put }.........: avg=445.44ms min=389.49ms med=402.41ms p(90)=459.72ms p(95)=546.55ms p(99)=887.02ms max=972.13ms
+      { expected_response:true }......: avg=225.49ms min=104.6ms  med=135.73ms p(90)=496.67ms p(95)=510.35ms p(99)=708.78ms max=1.61s   
+    http_req_failed...................: 0.00%    0 out of 1040
+    http_reqs.........................: 1040     7.104165/s
+
+    EXECUTION
+    iteration_duration................: avg=5.37s    min=2.87s    med=5.4s     p(90)=6.75s    p(95)=7.25s    p(99)=8.65s    max=8.93s   
+    iterations........................: 252      1.721394/s
+    vus...............................: 1        min=0           max=11
+    vus_max...........................: 11       min=11          max=11
+
+    NETWORK
+    data_received.....................: 32 MB    221 kB/s
+    data_sent.........................: 2.2 MB   15 kB/s
+
+
+
+
+running (2m26.4s), 00/11 VUs, 252 complete and 0 interrupted iterations
+subida_multimedia Ô£ô [ 100% ] 1 VUs   2m0s
+consumo_hls       Ô£ô [ 100% ] 10 VUs  2m0s

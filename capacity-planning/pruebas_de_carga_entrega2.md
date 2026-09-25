@@ -1,10 +1,10 @@
 # Pruebas de capacidad — Entrega 2 (ISIS4426)
 
-> Estado: **Escenario 1 completo** (commit `870f259`, corrida `20260925_131343_*`) —
-> faltan métricas de infraestructura (VM/PostgreSQL) y p99, ver limitaciones.
-> **Escenario 2 pendiente.** Ninguna cifra de este archivo debe darse por
-> buena hasta que la sección correspondiente tenga resultados pegados y
-> enlazados (no estimados ni inventados).
+> Estado: **Escenario 1 y Escenario 2 completos** (commit `870f259`). Faltan
+> completar a mano: versión de k6, tier de Cloud SQL, y (Escenario 1) p99 +
+> métricas de infraestructura — ver la sección "Limitaciones" de cada
+> escenario. Ninguna otra cifra de este archivo es estimada; todas salen de
+> las corridas enlazadas en `loadtests/results/`.
 
 ## Herramienta de generación de carga
 
@@ -118,10 +118,99 @@ Ver "Propuesta de evolución" al final del documento — se completa junto con e
 
 ## Escenario 2 — Carga, procesamiento y consumo multimedia
 
-Script listo: `loadtests/k6/media-load-test.js` (separado de `load-test.js` porque el patrón de tráfico —subida directa a almacenamiento + consumo HLS— es muy distinto). Corre dos escenarios en paralelo: pocos VUs subiendo video real y esperando la transcodificación HLS, y muchos VUs reproduciendo el manifiesto firmado + sus segmentos. Ver `loadtests/README.md` sección 6 para variables y ejemplos de invocación.
+### Definición del escenario
 
-_Pendiente: correr el run completo (niveles crecientes de `PLAYBACK_VUS`, análogo a `run_escenario1_niveles.ps1`) y documentar los resultados acá._
+Dos escenarios de k6 corriendo en paralelo en `loadtests/k6/media-load-test.js` (ver comentarios del archivo para el detalle):
+
+- **`subida_multimedia`** (pocos VUs): sube un video real (`loadtests/assets/sample_upload.mp4`, ~90KB, 5s) por PUT directo a almacenamiento vía URL firmada, confirma la carga (`complete-upload`) y espera a que termine la transcodificación HLS asíncrona.
+- **`consumo_hls`** (muchos VUs): pide `stream-url`, descarga el manifiesto firmado y hasta 5 segmentos `.ts` por iteración, a la cadencia declarada (no descarga todo el video de una sentada).
+
+`PLAYBACK_POOL_SIZE=3` en todos los niveles: 3 videos pre-transcodificados al arranque de cada corrida, cubriendo los 3 perfiles que pide el enunciado (mismo archivo de origen reutilizado; ver limitaciones). La concurrencia de workers no se tocó entre niveles.
+
+### Niveles de carga
+
+Ejecutados con `loadtests/k6/run_escenario2_niveles.ps1` (subida y consumo suben juntos, para simular más profesores publicando a la vez que más estudiantes reproduciendo).
+
+| Nivel | UPLOAD_VUS | PLAYBACK_VUS | Duración |
+|---|---|---|---|
+| Línea base | 1 | 10 | 2m |
+| Nivel 1 | 3 | 50 | 3m |
+| Nivel 2 | 5 | 150 | 3m |
+| Nivel 3 | 10 | 300 | 3m |
+| Repetición | 10 | 300 | 3m |
+
+### Condiciones fijas durante todas las corridas
+
+- Commit/release evaluado: `870f259` (rama `main`)
+- Corrida usada: `loadtests/results/escenario2/20260925_141917_*` (14:19-14:40 hora Bogotá / 19:19-19:40 UTC)
+- Monitoreo de infraestructura: `loadtests/monitoring/monitor_vm.sh` corrido en paralelo por SSH en **Web Server** únicamente, cada 5s → `loadtests/results/escenario2/web-server_escenario2.csv`. **Worker Server (donde corre FFmpeg) no se monitoreó** — ver limitaciones.
+- RAM de Web Server confirmada por el propio CSV (`host_mem_total_mb`): **1976 MB (~2 GiB)**, consistente con la configuración objetivo del enunciado.
+- Generador de carga: misma laptop del equipo, fuera de las VMs de la aplicación.
+- Base de datos: Cloud SQL PostgreSQL (`mooc-db-instance`) — `TODO tier/vCPU/RAM`
+- Versión de k6: `TODO — correr "k6 version" y pegar aquí`
+
+### Resultados por nivel
+
+**Tráfico HTTP y negocio** (avg/p95/p99 en ms; `PUT` es la subida directa a almacenamiento, no pasa por la API):
+
+| Nivel | `create_resource` | `upload_put` | `complete_upload` | `manifest` | `segment` | `stream_url` | Error HTTP |
+|---|---|---|---|---|---|---|---|
+| Línea base | 120/140/173 | 445/547/887 | 164/214/269 | 156/180/212 | 529/689/1197 | 116/125/156 | 0.00% |
+| Nivel 1 | 115/121/165 | 421/512/1008 | 144/162/184 | 153/182/255 | 490/646/774 | 117/126/257 | 0.00% |
+| Nivel 2 | 112/119/123 | 403/456/530 | 137/153/162 | 144/167/268 | 457/612/743 | 114/120/289 | 0.00% |
+| Nivel 3 | 113/121/153 | 385/471/520 | 135/149/157 | 145/170/353 | 457/609/740 | 116/119/355 | 0.00% |
+| Repetición | 112/117/144 | 366/462/519 | 135/148/166 | 145/169/366 | 451/609/776 | 116/120/349 | 0.00% |
+
+**Procesamiento asíncrono** (`media_processing_duration`, desde carga completa hasta `available`, en ms):
+
+| Nivel | avg | p95 | p99 | max | Timeouts | Fallos de descarga de segmento |
+|---|---|---|---|---|---|---|
+| Línea base | 3393 | 3568 | 5794 | 6351 | 0 | 0 |
+| Nivel 1 | 3401 | 4550 | 6346 | 6347 | 0 | 0 |
+| Nivel 2 | 3656 | 6335 | 6338 | 6340 | 0 | 0 |
+| Nivel 3 | 5444 | 6355 | 9459 | 9462 | 0 | 0 |
+| Repetición | 4955 | 6347 | 9312 | 9451 | 0 | 0 |
+
+**Infraestructura — Web Server** (`web-server_escenario2.csv`, cruzado por ventana de tiempo de cada nivel):
+
+| Nivel | CPU contenedor API (avg/max %) | CPU host (avg/max %) | Memoria host (avg/max MB de 1976) | Conexiones PG activas (avg/max) |
+|---|---|---|---|---|
+| Línea base | 1.6 / 11.5 | 1.9 / 6.0 | 636 / 653 | 1.0 / 1 |
+| Nivel 1 | 3.5 / 7.1 | 4.0 / 22.0 | 642 / 662 | 1.0 / 1 |
+| Nivel 2 | 8.6 / 14.0 | 8.2 / 28.0 | 646 / 667 | 1.0 / 1 |
+| Nivel 3 | 17.3 / 29.2 | 13.2 / 24.0 | 646 / 676 | 1.2 / 3 |
+| Repetición | 21.2 / 117.1* | 12.4 / 22.0 | 647 / 667 | 1.0 / 1 |
+
+\* Pico puntual de una sola muestra de 5s (probablemente una ráfaga de requests concurrentes atendidas en más de un core); el resto de la corrida se mantiene por debajo del 30%.
+
+**Throughput y checks:** 0 fallas HTTP y 0 checks fallidos en los 5 niveles (Línea base: 1040 reqs/7.1 req/s → Repetición: 46383 reqs/228 req/s). `media_processing_timeouts=0` y `media_segment_download_failures=0` en todos los niveles — ningún job quedó atascado ni ningún segmento HLS falló al descargar.
+
+### Análisis por punto exigido por el enunciado
+
+**Carga directa (URLs firmadas):** `create_resource` (autorización + URL firmada) se mantiene 112-120ms avg en todos los niveles — la API nunca es el cuello de botella de la carga. `upload_put` (transferencia directa a almacenamiento, no pasa por la API) es el paso más lento del flujo de subida (366-445ms avg), consistente con ser transferencia de archivo real contra el object storage, no cómputo de la API.
+
+**Procesamiento asíncrono:** el tiempo desde carga completa hasta `available` crece con la carga — de ~3.4s (línea base) a ~5.4s avg / 9.5s p99 (Nivel 3) — pero se mantiene muy por debajo del umbral de referencia (45s) en todos los niveles. El crecimiento no es proporcional al de `PLAYBACK_VUS`/`UPLOAD_VUS` (que se multiplica x30), lo que sugiere que la concurrencia de workers (mantenida fija a propósito) empieza a ser el limitante del pipeline de transcodificación antes que la API o la base de datos — pero **no se monitoreó Worker Server** para confirmarlo con CPU/memoria real (ver limitaciones).
+
+**Trabajos completados, reintentos y cola:** 0 timeouts y 0 rechazos de encolado (`media_enqueue_rejected`, sin muestras) en los 5 niveles — todo lo que se aceptó a la API terminó en `available`. No se observó profundidad ni antigüedad de la cola de asynq directamente (no hay panel de asynq monitoreado en esta entrega); la métrica usada como proxy es `media_processing_duration`.
+
+**Consumo HLS:** `manifest` y `segment` se mantienen estables y dentro de umbral en los 5 niveles (segment p95 608-689ms contra umbral de referencia 1000ms), incluso con `PLAYBACK_VUS` en 300. `stream_url` p99 sube de 156ms a ~350-355ms desde Nivel 1 en adelante (polling mientras el video termina de procesarse), pero su p95 se mantiene bajo 130ms — el p99 alto es exactamente el patrón esperado del pequeño porcentaje de reproducciones que arrancan justo cuando el video todavía se está transcodificando.
+
+**Componente que limita el flujo:** con los niveles probados (hasta `UPLOAD_VUS=10`/`PLAYBACK_VUS=300`), **no se alcanzó un punto de saturación real** — 0% de error HTTP y CPU de Web Server por debajo del 30% en el peor caso. El primer indicio de límite es el crecimiento de `media_processing_duration` (el pipeline de transcodificación), no la API ni el consumo HLS. Con una CDN delante del almacenamiento de objetos, el tráfico de `manifest`/`segment` (ya el 90%+ de las requests en los niveles altos) dejaría de pasar por la API/almacenamiento directo, liberando esa capacidad para más subida y procesamiento concurrente; más capacidad de procesamiento (más workers o más CPU en Worker Server) atacaría directamente el único componente que mostró crecimiento con la carga.
+
+### Limitaciones del experimento
+
+- **No se alcanzó saturación real** en ningún nivel probado — el máximo reportado (`UPLOAD_VUS=10`, `PLAYBACK_VUS=300`) no corresponde a la capacidad máxima de la plataforma, solo al techo probado en esta entrega.
+- **Worker Server no se monitoreó.** Solo se corrió `monitor_vm.sh` en Web Server; el crecimiento de `media_processing_duration` con la carga es evidencia indirecta de que el pipeline de transcodificación (Worker Server/FFmpeg) es el componente que primero muestra presión, pero no hay CPU/memoria real de esa VM para confirmarlo.
+- **Los 3 perfiles de video son el mismo archivo de origen** (`sample_upload.mp4`, ~90KB/5s) reutilizado 3 veces vía `PLAYBACK_POOL_SIZE=3`, no 3 archivos con duración/tamaño/resolución realmente distintos como pide el enunciado.
+- **No se midió tiempo hasta el primer cuadro ni interrupciones de reproducción con un reproductor real** — las métricas de manifiesto/segmento son peticiones HTTP, no reproducción real.
+- **No se instrumentó la profundidad/antigüedad de la cola de asynq directamente**; se usó `media_processing_duration` como proxy.
+
 
 ## Propuesta de evolución
 
-`TODO — a completar con base en los hallazgos de ambos escenarios`
+Los dos escenarios apuntan a componentes distintos, así que la evolución tiene dos frentes:
+
+1. **Escenario 1 (académico): el cuello de botella está aguas abajo de la API** — `catalog`/`enroll`/`heartbeat`/`quiz_start` se degradan juntos y a la par entre Nivel 2 (150 VUs, sano) y Nivel 3 (400 VUs, p95~60s, 5-9% error), lo que apunta al pool de conexiones de la API hacia PostgreSQL o a la propia instancia de Cloud SQL (VM de 2 vCPU) saturándose bajo escritura+lectura concurrente. La medición que respalda esto: los cuatro endpoints comparten el mismo patrón de degradación pese a tener costos de negocio muy distintos (una lectura de catálogo vs. una escritura de heartbeat), lo cual descarta que sea un endpoint particular con una consulta cara. Propuesta: subir el tier de Cloud SQL (más vCPU/conexiones máximas) y/o aumentar el `max_open_conns` del pool de la API, y repetir el Nivel 3 para confirmar si el punto de quiebre se corre hacia arriba.
+2. **Escenario 2 (multimedia): el cuello de botella es el pipeline de transcodificación, no la API ni el consumo HLS** — `media_processing_duration` crece de ~3.4s a ~5.4s avg (9.5s p99) entre línea base y Nivel 3, mientras la API (CPU Web Server <30% en el peor caso) y el consumo HLS (segment p95 estable en ~610-690ms) se mantienen sanos con 30x más carga. La medición que respalda esto: el único número que crece con la carga es justamente el que depende de la concurrencia fija de Worker Server. Propuesta: aumentar la concurrencia de workers/CPU de Worker Server y, para el consumo (ya el grueso del tráfico en los niveles altos), poner una CDN delante del almacenamiento de objetos — libera esa capacidad de la API/almacenamiento directo para más subida y procesamiento concurrente.
+
+Ambas propuestas quedan pendientes de validar con una corrida de confirmación (fuera del alcance de esta entrega); ver limitaciones de cada escenario para lo que falta medir antes de tomarlas como definitivas (infraestructura de PostgreSQL/Cloud SQL y de Worker Server, específicamente).
