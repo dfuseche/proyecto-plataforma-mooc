@@ -2,6 +2,7 @@ package media
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -35,6 +36,7 @@ func (h *HTTPHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/presigned-download", h.GeneratePresignedDownload)
 		r.Post("/resources/{resourceId}/complete-upload", h.CompleteUpload)
 		r.Get("/resources/{resourceId}/stream-url", h.GetStreamURL)
+		r.Get("/resources/{resourceId}/manifest.m3u8", h.GetSignedManifest)
 		r.Get("/resources/{resourceId}/resume", h.GetResumePosition)
 	})
 }
@@ -55,6 +57,27 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(APIResponse{Success: false, Error: message})
+}
+
+// publicBaseURL reconstruye el esquema+host públicos con los que se llamó a
+// la API, respetando cabeceras de un proxy/balanceador si están presentes.
+// Se usa para devolver URLs absolutas hacia endpoints propios (como el
+// manifiesto HLS firmado), en vez de asumir un host fijo.
+func publicBaseURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
+		scheme = proto
+	}
+
+	host := r.Host
+	if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
+		host = fwdHost
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, host)
 }
 
 func (h *HTTPHandler) GeneratePresignedUpload(w http.ResponseWriter, r *http.Request) {
@@ -167,18 +190,64 @@ func (h *HTTPHandler) GetStreamURL(w http.ResponseWriter, r *http.Request) {
 		authUser = &domain.User{ID: uuid.New(), Role: domain.RoleStudent}
 	}
 
-	presignedURL, err := h.storage.GeneratePresignedDownloadURL(r.Context(), res.MediaURL, 2*time.Hour)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
+	var streamURL string
+	if IsHLSManifestKey(res.MediaURL) {
+		// res.MediaURL es un manifiesto HLS (hls/<id>/master.m3u8). Un
+		// presigned URL solo firma ESE objeto: los segmentos .ts que el
+		// manifiesto referencia con rutas relativas son objetos aparte en un
+		// bucket privado, así que el reproductor no podría bajarlos. En vez
+		// de firmar el manifiesto directamente, devolvemos la URL de nuestro
+		// propio endpoint, que lo reescribe firmando cada segmento al vuelo.
+		streamURL = fmt.Sprintf("%s/api/v1/media/resources/%s/manifest.m3u8", publicBaseURL(r), res.ID)
+	} else {
+		streamURL, err = h.storage.GeneratePresignedDownloadURL(r.Context(), res.MediaURL, 2*time.Hour)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	respondJSON(w, http.StatusOK, map[string]any{
 		"resource_id":   res.ID,
 		"title":         res.Title,
 		"type":          res.Type,
-		"presigned_url": presignedURL,
+		"presigned_url": streamURL,
 	})
+}
+
+// GetSignedManifest sirve el manifiesto HLS de un recurso ya transcodificado,
+// con cada línea de segmento/sub-playlist reescrita como una URL prefirmada
+// de S3/MinIO. Ver el comentario en GetStreamURL para el porqué.
+func (h *HTTPHandler) GetSignedManifest(w http.ResponseWriter, r *http.Request) {
+	resourceIDStr := chi.URLParam(r, "resourceId")
+	resourceID, err := uuid.Parse(resourceIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "ID de recurso inválido")
+		return
+	}
+
+	res, err := h.courseRepo.GetResourceByID(r.Context(), resourceID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "Recurso no encontrado")
+		return
+	}
+
+	if res.ProcessingStatus != domain.ProcessingCompleted || !IsHLSManifestKey(res.MediaURL) {
+		respondError(w, http.StatusConflict, "El recurso no tiene un manifiesto HLS disponible")
+		return
+	}
+
+	body, err := h.storage.RewriteHLSManifest(r.Context(), res.MediaURL)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "No se pudo generar el manifiesto firmado")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	// El contenido trae URLs firmadas con expiración propia; no debe cachearse.
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
 }
 
 func (h *HTTPHandler) GetResumePosition(w http.ResponseWriter, r *http.Request) {
