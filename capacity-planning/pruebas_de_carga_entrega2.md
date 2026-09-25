@@ -92,7 +92,9 @@ _(pegar aquí, por cada nivel: p50/p95/p99 por endpoint, throughput, tasa de err
 
 ## Escenario 2 — Carga, procesamiento y consumo multimedia
 
-_Pendiente — no cubierto por `loadtests/k6/load-test.js`. Requiere un script aparte (carga directa a almacenamiento de objetos + consumo HLS) descrito en la sección 2.2 del enunciado._
+Script listo: `loadtests/k6/media-load-test.js` (separado de `load-test.js` porque el patrón de tráfico —subida directa a almacenamiento + consumo HLS— es muy distinto). Corre dos escenarios en paralelo: pocos VUs subiendo video real y esperando la transcodificación HLS, y muchos VUs reproduciendo el manifiesto firmado + sus segmentos. Ver `loadtests/README.md` sección 6 para variables y ejemplos de invocación.
+
+_Pendiente: correr el run completo (niveles crecientes de `PLAYBACK_VUS`, análogo a `run_escenario1_niveles.ps1`) y documentar los resultados acá._
 
 ## Propuesta de evolución
 

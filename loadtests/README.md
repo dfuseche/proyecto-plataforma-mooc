@@ -117,7 +117,44 @@ un MOOC, donde la mayoría de las visitas son de navegación):
   concurrencia, no un problema de infraestructura).
 - Verificación pública de insignia.
 
-No cubre todavía: la carga multimedia (`/api/v1/media/...`, Escenario 2 del
+No cubre: la carga multimedia (`/api/v1/media/...`, Escenario 2 del
 análisis de capacidad) — es un script aparte porque el patrón de tráfico
 (subida directa a almacenamiento de objetos + consumo de HLS) es muy
-distinto al de este script.
+distinto al de este script. Ver `loadtests/k6/media-load-test.js`.
+
+## 6. Escenario 2 (multimedia/HLS)
+
+Script separado: `loadtests/k6/media-load-test.js`. Corre dos escenarios
+en paralelo — pocos VUs subiendo video (`subida_multimedia`, trabajo
+pesado: PUT directo a almacenamiento + espera de la transcodificación
+HLS real en el worker) y muchos VUs reproduciendo HLS ya transcodificado
+(`consumo_hls`: stream-url + manifiesto firmado + segmentos — el tráfico
+de lectura real a escala). Usa `loadtests/assets/sample_upload.mp4`
+(incluido en el repo) como archivo de prueba.
+
+Humo rápido:
+
+```
+k6 run -e BASE_URL=http://35.209.105.199 -e UPLOAD_VUS=1 -e PLAYBACK_VUS=5 \
+  -e UPLOAD_DURATION=40s -e PLAYBACK_DURATION=40s loadtests/k6/media-load-test.js
+```
+
+Run completo (valores por defecto: 5 VUs subiendo / 150 VUs reproduciendo,
+3 min cada escenario):
+
+```
+k6 run -e BASE_URL=http://35.209.105.199 loadtests/k6/media-load-test.js
+```
+
+Variables propias de este script (además de `BASE_URL`): `UNIT_ID`,
+`UPLOAD_VUS`, `UPLOAD_DURATION`, `PLAYBACK_VUS`, `PLAYBACK_DURATION`,
+`PLAYBACK_POOL_SIZE`, `PRETRANSCODED_RESOURCE_IDS` (para reutilizar
+recursos ya procesados de una corrida anterior y saltarse el setup),
+`MAX_WAIT_FOR_MANIFEST_SECONDS`, `POLL_INTERVAL_SECONDS`,
+`MAX_SEGMENTS_PER_ITERACION`. El propio script trae la lista completa
+comentada en su encabezado.
+
+No prueba: el enunciado pide carga "multipart directa y reanudable"; la
+API actual solo ofrece un PUT firmado de un solo tiro
+(`GeneratePresignedUpload`), sin soporte de multipart/resumable upload
+todavía — el script prueba lo que existe hoy, no lo simula.
