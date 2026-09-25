@@ -155,6 +155,12 @@ func main() {
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
 	defer asynqClient.Close()
 
+	// El Inspector le permite al handler de media revisar/limpiar tareas
+	// archivadas cuando un Enqueue choca por Task ID duplicado (ver
+	// media.HTTPHandler.enqueueTranscodeTask).
+	asynqInspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
+	defer asynqInspector.Close()
+
 	// Inicializar Servicio de Almacenamiento MinIO/S3
 	storageService, err := media.NewStorageService(cfg)
 	if err != nil {
@@ -179,7 +185,7 @@ func main() {
 	learningUC := learning.NewUseCase(learningRepo, courseRepo, userRepo, fmt.Sprintf("http://localhost:%s", cfg.Port))
 	learningHandler := learning.NewHTTPHandler(learningUC)
 
-	mediaHandler := media.NewHTTPHandler(storageService, courseRepo, learningRepo, asynqClient)
+	mediaHandler := media.NewHTTPHandler(storageService, courseRepo, learningRepo, asynqClient, asynqInspector)
 
 	authMw := internalMw.NewAuthMiddleware(userRepo)
 	rateLimiter := internalMw.NewRateLimiter(rdb, 100, 1*time.Minute)

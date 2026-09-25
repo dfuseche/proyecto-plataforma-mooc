@@ -1,8 +1,11 @@
 package media
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,19 +17,29 @@ import (
 	"github.com/mooc-platform/backend/internal/worker"
 )
 
+// asynqDefaultQueue es la cola en la que se encolan las tareas de este
+// paquete (worker.NewMediaTranscodeHLSTask no pasa asynq.Queue(...), así
+// que caen en la cola por defecto de asynq).
+const asynqDefaultQueue = "default"
+
 type HTTPHandler struct {
 	storage      *StorageService
 	courseRepo   domain.CourseRepository
 	learningRepo domain.LearningRepository
 	asynqClient  *asynq.Client
+	// asynqInspector es opcional: si es nil, seguimos pudiendo encolar,
+	// simplemente perdemos la capacidad de destrabar una tarea que quedó
+	// archivada con el mismo Task ID (ver enqueueTranscodeTask).
+	asynqInspector *asynq.Inspector
 }
 
-func NewHTTPHandler(storage *StorageService, courseRepo domain.CourseRepository, learningRepo domain.LearningRepository, asynqClient *asynq.Client) *HTTPHandler {
+func NewHTTPHandler(storage *StorageService, courseRepo domain.CourseRepository, learningRepo domain.LearningRepository, asynqClient *asynq.Client, asynqInspector *asynq.Inspector) *HTTPHandler {
 	return &HTTPHandler{
-		storage:      storage,
-		courseRepo:   courseRepo,
-		learningRepo: learningRepo,
-		asynqClient:  asynqClient,
+		storage:        storage,
+		courseRepo:     courseRepo,
+		learningRepo:   learningRepo,
+		asynqClient:    asynqClient,
+		asynqInspector: asynqInspector,
 	}
 }
 
@@ -157,8 +170,27 @@ func (h *HTTPHandler) CompleteUpload(w http.ResponseWriter, r *http.Request) {
 	// 3. Encolar tarea asíncrona en Asynq
 	if h.asynqClient != nil && (res.Type == domain.ResourceTypeVideo || res.Type == domain.ResourceTypeAudio) {
 		task, err := worker.NewMediaTranscodeHLSTask(res.ID, req.ObjectKey, string(res.Type))
-		if err == nil {
-			_, _ = h.asynqClient.Enqueue(task)
+		if err != nil {
+			log.Printf("[MEDIA] No se pudo construir la tarea de transcodificación para %s: %v", res.ID, err)
+			respondError(w, http.StatusInternalServerError, "No se pudo preparar el procesamiento del recurso")
+			return
+		}
+
+		if err := h.enqueueTranscodeTask(r.Context(), task, res.ID.String()); err != nil {
+			// Antes este error se descartaba en silencio (_, _ = ...Enqueue(task)):
+			// el recurso quedaba en "processing" para siempre y nadie se enteraba
+			// de que la transcodificación nunca se había disparado. Ahora lo
+			// registramos, lo reflejamos en el estado del recurso y se lo
+			// devolvemos al llamador para que pueda reintentar.
+			log.Printf("[MEDIA] Fallo encolando transcodificación HLS para %s: %v", res.ID, err)
+
+			res.ProcessingStatus = domain.ProcessingFailed
+			if updErr := h.courseRepo.UpdateResource(r.Context(), res); updErr != nil {
+				log.Printf("[MEDIA] Además falló marcando %s como failed: %v", res.ID, updErr)
+			}
+
+			respondError(w, http.StatusBadGateway, "El archivo se subió, pero no se pudo encolar el procesamiento. Reintentá el complete-upload.")
+			return
 		}
 	}
 
@@ -168,6 +200,52 @@ func (h *HTTPHandler) CompleteUpload(w http.ResponseWriter, r *http.Request) {
 		"object_size_bytes": stat.Size,
 		"processing_status": res.ProcessingStatus,
 	})
+}
+
+// enqueueTranscodeTask encola la tarea de transcodificación HLS. El worker
+// usa el resource ID como Task ID (asynq.TaskID) para lograr idempotencia
+// ante encolados duplicados, pero eso tiene un efecto secundario: asynq
+// rechaza (asynq.ErrTaskIDConflict) cualquier intento de reencolar una
+// tarea con ese mismo ID, incluso si esa tarea ya terminó en la
+// Dead-Letter Queue. Sin este manejo, un complete-upload repetido tras un
+// fallo transitorio (p.ej. la BD del worker caída) nunca vuelve a disparar
+// el procesamiento, y el recurso queda atascado para siempre.
+func (h *HTTPHandler) enqueueTranscodeTask(ctx context.Context, task *asynq.Task, taskID string) error {
+	if _, err := h.asynqClient.Enqueue(task); err == nil {
+		return nil
+	} else if !errors.Is(err, asynq.ErrTaskIDConflict) {
+		return fmt.Errorf("enqueue failed: %w", err)
+	}
+
+	if h.asynqInspector == nil {
+		// No podemos saber en qué estado quedó la tarea existente; lo más
+		// seguro es asumir que sigue viva y no tratar esto como error fatal.
+		return nil
+	}
+
+	info, err := h.asynqInspector.GetTaskInfo(asynqDefaultQueue, taskID)
+	if err != nil {
+		log.Printf("[MEDIA] No se pudo inspeccionar la tarea %s tras conflicto de Task ID: %v", taskID, err)
+		return nil
+	}
+
+	switch info.State {
+	case asynq.TaskStateArchived, asynq.TaskStateCompleted:
+		// Tarea terminal (falló y fue enviada a la DLQ, o ya se completó
+		// hace tiempo): la limpiamos y reintentamos el encolado para que
+		// este complete-upload realmente dispare un intento nuevo.
+		if err := h.asynqInspector.DeleteTask(asynqDefaultQueue, taskID); err != nil {
+			return fmt.Errorf("no se pudo limpiar la tarea archivada %s: %w", taskID, err)
+		}
+		if _, err := h.asynqClient.Enqueue(task); err != nil {
+			return fmt.Errorf("reintento de enqueue falló tras limpiar tarea archivada: %w", err)
+		}
+		return nil
+	default:
+		// Pending, Active, Scheduled o Retry: ya hay una tarea viva para
+		// este recurso, no hace falta (ni conviene) duplicarla.
+		return nil
+	}
 }
 
 func (h *HTTPHandler) GetStreamURL(w http.ResponseWriter, r *http.Request) {
