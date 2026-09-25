@@ -138,11 +138,20 @@ func (p *Processor) HandleMediaTranscodeHLS(ctx context.Context, t *asynq.Task) 
 }
 
 func (p *Processor) markResourceCompleted(ctx context.Context, resourceID uuid.UUID, mediaURL string) error {
-	res := &domain.Resource{
-		ID:               resourceID,
-		MediaURL:         mediaURL,
-		ProcessingStatus: domain.ProcessingCompleted,
+	// UpdateResource hace un UPDATE de la fila completa (titulo, visibilidad,
+	// posicion, etc.), no un patch parcial. Si arma aca un domain.Resource{}
+	// nuevo con solo ID/MediaURL/ProcessingStatus, el resto de las columnas
+	// se pisan con su valor cero (titulo vacio, is_visible=false...) cada vez
+	// que el worker marca un recurso como completado. Por eso primero se trae
+	// el recurso existente y solo se tocan los dos campos que cambian.
+	res, err := p.courseRepo.GetResourceByID(ctx, resourceID)
+	if err != nil {
+		return fmt.Errorf("failed to load resource %s before marking completed: %w", resourceID, err)
 	}
+
+	res.MediaURL = mediaURL
+	res.ProcessingStatus = domain.ProcessingCompleted
+
 	return p.courseRepo.UpdateResource(ctx, res)
 }
 
