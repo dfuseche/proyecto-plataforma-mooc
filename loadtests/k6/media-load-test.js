@@ -155,12 +155,12 @@ function crearYSubirVideo(tagPrefix) {
   const createRes = http.post(
     `${BASE_URL}/api/v1/courses/units/${UNIT_ID}/resources`,
     JSON.stringify({
-      title: `${tagPrefix} ${Date.now()}-${__VU}-${__ITER}`,
+      title: `${tagPrefix} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
       type: 'video',
       is_visible: true,
       is_mandatory: false,
       is_downloadable: false,
-      position: 900 + __VU,
+      position: 900 + Math.floor(Math.random() * 100),
     }),
     { headers: { 'Content-Type': 'application/json' }, tags: { endpoint: 'create_resource' } }
   );
